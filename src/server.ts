@@ -100,7 +100,8 @@ async function approve(milestone: store.Milestone): Promise<string> {
   milestone.capture = await paypal.captureAuthorization(heldAuthorization(milestone).id);
   milestone.status = "PAID";
   store.save();
-  return withMessage(`/c/${milestone.id}`, "notice", `Approved. $${milestone.amount} is on its way to the freelancer.`);
+  // No flash message: the page's "Approved and paid" card already says it.
+  return `/c/${milestone.id}`;
 }
 
 async function reject(milestone: store.Milestone): Promise<string> {
@@ -108,7 +109,7 @@ async function reject(milestone: store.Milestone): Promise<string> {
   await paypal.voidAuthorization(heldAuthorization(milestone).id);
   milestone.status = "HOLD_RELEASED";
   store.save();
-  return withMessage(`/c/${milestone.id}`, "notice", "The hold is released. You weren't charged.");
+  return `/c/${milestone.id}`;
 }
 
 function requestChanges(milestone: store.Milestone, form: URLSearchParams): string {
