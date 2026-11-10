@@ -1,0 +1,26 @@
+{
+  "name": "proof-of-done",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Milestone payments for freelancers where 'done' is backed by evidence. Built on PayPal authorize/capture.",
+  "license": "MIT",
+  "type": "module",
+  "engines": {
+    "node": ">=24"
+  },
+  "scripts": {
+    "start": "node --env-file-if-exists=.env src/server.ts",
+    "dev": "node --env-file-if-exists=.env --watch src/server.ts",
+    "check": "node --env-file-if-exists=.env src/check.ts",
+    "typecheck": "tsc"
+  },
+  "devDependencies": {
+    "@types/node": "^24.19.2",
+    "typescript": "^7.0.2"
+  },
+  "dependencies": {
+    "@google/genai": "^3.1.0",
+    "node-html-parser": "^9.0.7",
+    "zod": "^4.6.7"
+  }
+}
