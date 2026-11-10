@@ -9,6 +9,8 @@ export const MODEL = process.env.GEMINI_MODEL || "gemini-3.8-flash";
 // 404 is included because Google retires models for new accounts without notice.
 const FALLBACK_MODELS = ["gemini-3.6-flash", "gemini-3.5-flash", "gemini-3.5-flash-lite", "gemini-3.1-flash-lite"];
 const RETRYABLE = new Set([404, 429, 500, 503]);
+const CALL_TIMEOUT_MS = 20_000;
+const TOTAL_BUDGET_MS = 90_000;
 // The demo is public, so cap AI calls to stay inside the free tier and keep strangers from draining it.
 const MAX_CALLS_PER_HOUR = Number(process.env.MAX_AI_CALLS_PER_HOUR || 40);
 
@@ -88,35 +90,45 @@ async function ask<T extends z.ZodType>(schema: T, systemInstruction: string, co
   const { $schema, ...jsonSchema } = z.toJSONSchema(schema) as Record<string, unknown>;
   let lastError: unknown;
   const models = [MODEL, ...FALLBACK_MODELS.filter((m) => m !== MODEL)];
+  // An overloaded free-tier model sometimes never answers at all, so every call gets a time limit
+  // and the whole step a budget: the user gets a result or a clear error, never an endless spinner.
+  const deadline = Date.now() + TOTAL_BUDGET_MS;
   // Two passes over the chain: a busy model is often free again a few seconds later.
   for (let attempt = 0; attempt < 2; attempt++) {
     for (const model of models) {
+      const remaining = deadline - Date.now();
+      if (remaining < 2000) break;
       try {
         const response = await client.models.generateContent({
           model,
           contents,
-          config: { systemInstruction, responseMimeType: "application/json", responseJsonSchema: jsonSchema },
+          config: {
+            systemInstruction,
+            responseMimeType: "application/json",
+            responseJsonSchema: jsonSchema,
+            abortSignal: AbortSignal.timeout(Math.min(CALL_TIMEOUT_MS, remaining)),
+          },
         });
         // Validate rather than trust: a malformed answer must fail loudly, not render a half-empty report.
         const parsed = schema.safeParse(safeJson(response.text));
         if (parsed.success) return parsed.data;
         lastError = new Error("The AI's answer wasn't in the expected format. Please try again.");
       } catch (err) {
-        if (!(err instanceof ApiError && RETRYABLE.has(err.status))) throw err;
+        const timedOut = err instanceof Error && (err.name === "TimeoutError" || err.name === "AbortError");
+        if (!timedOut && !(err instanceof ApiError && RETRYABLE.has(err.status))) throw err;
         lastError = err;
-        console.warn(`Gemini ${model} returned ${err.status}; trying the next model.`);
+        console.warn(`Gemini ${model} ${timedOut ? "timed out" : `returned ${(err as ApiError).status}`}; trying the next model.`);
       }
     }
+    if (deadline - Date.now() < 5000) break;
     await new Promise((resolve) => setTimeout(resolve, 3000));
   }
-  if (lastError instanceof ApiError) {
-    throw new Error(
-      lastError.status === 429
-        ? "Gemini's free-tier limit was reached. Wait a minute and try again."
-        : "Gemini is very busy right now. Wait a minute and try again.",
-    );
+  if (lastError instanceof ApiError && lastError.status === 429) {
+    throw new Error("Gemini's free-tier limit was reached. Wait a minute and try again.");
   }
-  throw lastError;
+  // Only a malformed answer leaves a plain Error here; busy models and timeouts get one clear message.
+  if (lastError instanceof Error && lastError.name === "Error" && !(lastError instanceof ApiError)) throw lastError;
+  throw new Error("Gemini is very busy right now. Wait a minute and try again.");
 }
 
 function safeJson(text: string | undefined): unknown {

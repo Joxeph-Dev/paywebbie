@@ -10,6 +10,10 @@ Freelancers deliver the work and then wait to be paid, or argue about whether "d
 
 Built by a student freelancer in East London, South Africa, who builds websites for local restaurants.
 
+**Live demo: <https://proof-of-done-wvfh.onrender.com>**
+
+The demo runs on Render's free plan, which sleeps when idle, so the first visit can take about a minute to load. Its saved milestones reset whenever the server restarts.
+
 ## How it works
 
 | Step | Who | What happens | Tech |
@@ -34,7 +38,7 @@ Built by a student freelancer in East London, South Africa, who builds websites 
 - **Prompt injection.** Website text is written by the freelancer, so the AI is told to treat it as untrusted and ignore instructions in it. The client still decides.
 - **Safe crawling.** The checker refuses private-network addresses and checks every redirect, so a submitted URL can't probe the server's own network.
 - **Safe retries.** Every PayPal call that moves money sends a `PayPal-Request-Id`, so a double click or a retry can't capture twice.
-- **Free-tier friendly.** AI calls are capped per hour (`MAX_AI_CALLS_PER_HOUR`, default 40). If a Gemini model is busy, the app falls back through other Flash models.
+- **Free-tier friendly.** AI calls are capped per hour (`MAX_AI_CALLS_PER_HOUR`, default 40). If a Gemini model is busy or doesn't answer within 20 seconds, the app falls back through other Flash models, and gives up with a clear message after 90 seconds.
 
 ## AI and tools used
 
