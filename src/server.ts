@@ -232,7 +232,8 @@ server.listen(PORT, () => {
   else
     paypal.requestToken().then(
       (t) => console.log(`PayPal sandbox login OK (app ${t.app_id ?? "unknown"}).`),
-      (err) => console.log(`PayPal sandbox login FAILED: ${err instanceof Error ? err.message : err}`),
+      (err) =>
+        console.log(`PayPal sandbox login FAILED: ${err instanceof Error ? err.message : err} (${paypal.credentialFingerprint()})`),
     );
   if (!ai.hasApiKey()) console.log("Missing GEMINI_API_KEY: add it to .env.");
 });

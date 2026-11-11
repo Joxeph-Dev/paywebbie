@@ -1,5 +1,5 @@
 // Minimal client for the PayPal REST endpoints Proof-of-Done needs. Sandbox only for now.
-import { randomUUID } from "node:crypto";
+import { createHash, randomUUID } from "node:crypto";
 
 const API_URL = "https://api-m.sandbox.paypal.com";
 // PayPal holds authorized funds for 29 days but only guarantees them for the first 3 (the "honor period").
@@ -51,6 +51,13 @@ export class PayPalError extends Error {
 // which PayPal rejects as invalid_client.
 const clientId = () => (process.env.PAYPAL_CLIENT_ID ?? "").trim();
 const clientSecret = () => (process.env.PAYPAL_CLIENT_SECRET ?? "").trim();
+
+// A safe way to tell whether two copies of the keys match: each key's length plus the first
+// 8 characters of its SHA-256 hash, which can't be turned back into the key.
+export function credentialFingerprint(): string {
+  const fp = (value: string) => `${value.length} chars, ${createHash("sha256").update(value).digest("hex").slice(0, 8)}`;
+  return `client id ${fp(clientId())}; secret ${fp(clientSecret())}`;
+}
 
 export function hasCredentials(): boolean {
   return Boolean(clientId() && clientSecret());
