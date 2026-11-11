@@ -27,15 +27,16 @@ The demo runs on Render's free plan, which sleeps when idle, so the first visit 
 ## Try the demo
 
 1. Open the app and click **Fill in the demo example**, then **Draft the checklist with AI**.
-2. Click **Open as client**, then **Hold $150.00 with PayPal**. Log in with a PayPal **sandbox personal** account. For judges, the test buyer login is in the Devpost submission.
-3. Back on the freelancer page, submit the built-in demo site: `<app address>/demo/`. It's a restaurant site with deliberate gaps: no booking form, a broken Gallery link, and an image without alt text.
-4. Open the client view to read the evidence report, then approve, request changes, or reject.
+2. The freelancer and the client get separate private links. Copy the client link into another window, or click **Preview your client's page** (a demo shortcut that opens a new tab). There, click **Hold $150.00 with PayPal** and log in with a PayPal **sandbox personal** account. For judges, the test buyer login is in the Devpost submission.
+3. Back on the freelancer tab, refresh and submit the built-in demo site: `<app address>/demo/`. It's a restaurant site with deliberate gaps: no booking form, a broken Gallery link, and an image without alt text.
+4. Refresh the client tab to read the evidence report, then approve, request changes, or reject.
 
 ## Design decisions
 
 - **Evidence, not opinion.** The crawler collects facts without AI. The AI only judges against those facts and must cite them. The raw evidence is shown under "What the AI was shown".
 - **PayPal's 3-day catch.** PayPal holds authorized money for 29 days but only *guarantees* it for the first 3 (the honor period). When work is submitted on a hold older than 3 days, the app **reauthorizes** first, so the client reviews inside a fresh guarantee.
 - **Prompt injection.** Website text is written by the freelancer, so the AI is told to treat it as untrusted and ignore instructions in it. The client still decides.
+- **Separate sides.** The freelancer and the client each get their own random link, so the client's link can't be edited into the freelancer's page. The home page lists only the milestones created in your own browser.
 - **Safe crawling.** The checker refuses private-network addresses and checks every redirect, so a submitted URL can't probe the server's own network.
 - **Safe retries.** Every PayPal call that moves money sends a `PayPal-Request-Id`, so a double click or a retry can't capture twice.
 - **Free-tier friendly.** AI calls are capped per hour (`MAX_AI_CALLS_PER_HOUR`, default 40). If a Gemini model is busy or doesn't answer within 20 seconds, the app falls back through other Flash models, and gives up with a clear message after 90 seconds.
