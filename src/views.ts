@@ -49,7 +49,7 @@ export function home(milestones: Milestone[], appUrl: string, demo: boolean, mes
     .map(
       (m) => `<li class="milestone-row">
         <a class="row-main" href="/m/${m.id}"><strong>${escapeHtml(m.title)}</strong>${statusBadge(m.status)}</a>
-        <div class="row-side"><span class="money">$${m.amount}</span><a class="link-quiet" href="/c/${m.id}">Client view</a></div>
+        <div class="row-side"><span class="money">$${m.amount}</span></div>
       </li>`,
     )
     .join("");
@@ -91,7 +91,11 @@ export function home(milestones: Milestone[], appUrl: string, demo: boolean, mes
 }
 
 export function freelancerPage(m: Milestone, appUrl: string, messages: Messages): string {
-  const clientLink = `${appUrl}/c/${m.id}`;
+  const clientLink = `${appUrl}/c/${m.clientId}`;
+  // In real use the freelancer sends the link. This shortcut lets one person try both sides,
+  // and opens in a new tab so the freelancer's page stays where it was.
+  const clientPreview = `<a class="button button-block" href="/c/${m.clientId}" target="_blank" rel="noopener">${icon("external", 18)} Preview your client's page</a>
+      <p class="help">Demo shortcut. In real use, your client opens the link you send them.</p>`;
   const lastChange = m.status === "FUNDS_HELD" ? m.changeRequests.at(-1) : undefined;
   let action = "";
   if (m.status === "AWAITING_HOLD") {
@@ -100,7 +104,7 @@ export function freelancerPage(m: Milestone, appUrl: string, messages: Messages)
       <p>They review the checklist and hold the payment with PayPal. Start work once the money is held.</p>
       <div class="copy-field"><code id="client-link">${escapeHtml(clientLink)}</code>
         <button type="button" class="button button-small" data-copy="client-link">${icon("copy", 16)} Copy</button></div>
-      <a class="button button-block" href="/c/${m.id}">${icon("external", 18)} Open as client</a>
+      ${clientPreview}
     </section>`;
   } else if (m.status === "FUNDS_HELD") {
     action = `<form class="card card-action" method="post" action="/m/${m.id}/submit" data-busy="Checking the website…">
@@ -116,7 +120,7 @@ export function freelancerPage(m: Milestone, appUrl: string, messages: Messages)
     action = `<section class="card card-action">
       <h2>${icon("eye", 20)} Your client is reviewing</h2>
       <p>They can approve and pay, ask for changes, or release the hold. The money stays held until they decide.</p>
-      <a class="button button-block" href="/c/${m.id}">${icon("external", 18)} Open as client</a>
+      ${clientPreview}
     </section>`;
   }
   return milestonePage(m, "freelancer", messages, m.submission ? report(m) : checklist(m), action);
@@ -125,7 +129,7 @@ export function freelancerPage(m: Milestone, appUrl: string, messages: Messages)
 export function clientPage(m: Milestone, messages: Messages): string {
   let action = "";
   if (m.status === "AWAITING_HOLD") {
-    action = `<form class="card card-action" method="post" action="/c/${m.id}/hold" data-busy="Opening PayPal…">
+    action = `<form class="card card-action" method="post" action="/c/${m.clientId}/hold" data-busy="Opening PayPal…">
       <h2>${icon("lock", 20)} Hold the payment</h2>
       <p>PayPal holds <strong>$${m.amount}</strong> on your account. <strong>You're not charged yet.</strong>
       You pay only when you approve the finished work. If you reject it, the hold is released.</p>
@@ -142,16 +146,16 @@ export function clientPage(m: Milestone, messages: Messages): string {
     action = `<section class="card card-action">
       <h2>Your decision</h2>
       <p>Read the evidence report, then decide. The AI doesn't decide for you.</p>
-      <form method="post" action="/c/${m.id}/approve" data-busy="Sending the payment…">
+      <form method="post" action="/c/${m.clientId}/approve" data-busy="Sending the payment…">
         <button class="button button-primary button-block">${icon("checkCircle", 18)} Approve and pay $${m.amount}</button>
       </form>
-      <form method="post" action="/c/${m.id}/changes" data-busy="Sending your note…" class="stack-top">
+      <form method="post" action="/c/${m.clientId}/changes" data-busy="Sending your note…" class="stack-top">
         <label for="note">Or ask for changes</label>
         <textarea id="note" name="note" rows="3" minlength="3" maxlength="1000" required placeholder="The booking form is missing"></textarea>
         <button class="button button-block">${icon("message", 18)} Request changes</button>
         <p class="help">The money stays on hold while the freelancer fixes it.</p>
       </form>
-      <form method="post" action="/c/${m.id}/reject" data-busy="Releasing the hold…" data-confirm="Reject the work and release the hold? You won't be charged." class="stack-top">
+      <form method="post" action="/c/${m.clientId}/reject" data-busy="Releasing the hold…" data-confirm="Reject the work and release the hold? You won't be charged." class="stack-top">
         <button class="button button-danger button-block">${icon("xCircle", 18)} Reject and release the hold</button>
       </form>
     </section>`;
@@ -307,7 +311,12 @@ function layout(title: string, role: "freelancer" | "client" | undefined, messag
 <body>
 <a class="skip-link" href="#main">Skip to content</a>
 <header class="topbar"><div class="topbar-inner">
-  <a class="brand" href="/"><span class="brand-mark">${icon("shieldCheck", 18)}</span>Proof-of-Done</a>${roleLabel}
+  ${
+    // The client's pages have no way into the freelancer side, so for them the logo is just a logo.
+    role === "client"
+      ? `<span class="brand"><span class="brand-mark">${icon("shieldCheck", 18)}</span>Proof-of-Done</span>`
+      : `<a class="brand" href="/"><span class="brand-mark">${icon("shieldCheck", 18)}</span>Proof-of-Done</a>`
+  }${roleLabel}
 </div></header>
 <main id="main">
 ${messages.error ? notice("bad", messages.error) : ""}

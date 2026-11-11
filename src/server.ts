@@ -26,6 +26,7 @@ async function createMilestone(form: URLSearchParams): Promise<string> {
   const criteria = await ai.draftChecklist(title, brief);
   const milestone: store.Milestone = {
     id: store.newId(),
+    clientId: store.newId(),
     title,
     brief,
     amount,
@@ -86,13 +87,13 @@ async function clientApproved(orderId: string | null): Promise<string> {
     store.save();
   }
   return milestone.status === "DECLINED"
-    ? withMessage(`/c/${milestone.id}`, "error", "PayPal declined the hold.")
-    : withMessage(`/c/${milestone.id}`, "notice", `$${milestone.amount} is now held by PayPal. You haven't been charged.`);
+    ? withMessage(`/c/${milestone.clientId}`, "error", "PayPal declined the hold.")
+    : withMessage(`/c/${milestone.clientId}`, "notice", `$${milestone.amount} is now held by PayPal. You haven't been charged.`);
 }
 
 function clientCancelled(orderId: string | null): string {
   const milestone = store.findByOrder(orderId);
-  return withMessage(`/c/${milestone.id}`, "notice", "You cancelled at PayPal, so nothing is held.");
+  return withMessage(`/c/${milestone.clientId}`, "notice", "You cancelled at PayPal, so nothing is held.");
 }
 
 async function approve(milestone: store.Milestone): Promise<string> {
@@ -101,7 +102,7 @@ async function approve(milestone: store.Milestone): Promise<string> {
   milestone.status = "PAID";
   store.save();
   // No flash message: the page's "Approved and paid" card already says it.
-  return `/c/${milestone.id}`;
+  return `/c/${milestone.clientId}`;
 }
 
 async function reject(milestone: store.Milestone): Promise<string> {
@@ -109,7 +110,7 @@ async function reject(milestone: store.Milestone): Promise<string> {
   await paypal.voidAuthorization(heldAuthorization(milestone).id);
   milestone.status = "HOLD_RELEASED";
   store.save();
-  return `/c/${milestone.id}`;
+  return `/c/${milestone.clientId}`;
 }
 
 function requestChanges(milestone: store.Milestone, form: URLSearchParams): string {
@@ -117,7 +118,7 @@ function requestChanges(milestone: store.Milestone, form: URLSearchParams): stri
   milestone.changeRequests.push({ note: text(form, "note", 3, 1000, "Your note"), at: new Date().toISOString() });
   milestone.status = "FUNDS_HELD";
   store.save();
-  return withMessage(`/c/${milestone.id}`, "notice", "The freelancer has your note. Your money stays on hold.");
+  return withMessage(`/c/${milestone.clientId}`, "notice", "The freelancer has your note. Your money stays on hold.");
 }
 
 const FREELANCER_ACTIONS = new Map<string, Action>([["submit", submitWork]]);
@@ -181,6 +182,20 @@ async function readForm(req: IncomingMessage): Promise<URLSearchParams> {
   return new URLSearchParams(raw);
 }
 
+// The home page lists only the milestones created in this browser, not every visitor's.
+const MINE_COOKIE = "pod_mine";
+
+function myMilestones(req: IncomingMessage): string[] {
+  const cookie = (req.headers.cookie ?? "").split(/;\s*/).find((c) => c.startsWith(`${MINE_COOKIE}=`));
+  return (cookie?.slice(MINE_COOKIE.length + 1) ?? "").split(".").filter((id) => /^[\w-]{12}$/.test(id));
+}
+
+function rememberMilestone(req: IncomingMessage, id: string): string {
+  const ids = [id, ...myMilestones(req).filter((other) => other !== id)].slice(0, 20);
+  const secure = APP_URL.startsWith("https:") ? "; Secure" : "";
+  return `${MINE_COOKIE}=${ids.join(".")}; Path=/; Max-Age=${60 * 60 * 24 * 30}; HttpOnly; SameSite=Lax${secure}`;
+}
+
 function redirect(res: ServerResponse, location: string): void {
   res.writeHead(303, { Location: location }).end();
 }
@@ -201,15 +216,22 @@ const server = createServer(async (req, res) => {
   const method = req.method ?? "GET";
   const messages = { notice: url.searchParams.get("notice"), error: url.searchParams.get("error") };
   try {
-    if (method === "GET" && url.pathname === "/") return html(res, views.home(store.all(), APP_URL, url.searchParams.has("demo"), messages));
+    if (method === "GET" && url.pathname === "/") {
+      return html(res, views.home(store.some(myMilestones(req)), APP_URL, url.searchParams.has("demo"), messages));
+    }
     if (method === "GET" && url.pathname === "/demo") return redirect(res, "/demo/");
     if (method === "GET" && url.pathname.startsWith("/demo/")) return serveDemo(res, url.pathname);
-    if (method === "POST" && url.pathname === "/milestones") return redirect(res, await createMilestone(await readForm(req)));
+    if (method === "POST" && url.pathname === "/milestones") {
+      const location = await createMilestone(await readForm(req));
+      res.setHeader("Set-Cookie", rememberMilestone(req, location.slice("/m/".length)));
+      return redirect(res, location);
+    }
     if (method === "GET" && url.pathname === "/paypal/return") return redirect(res, await clientApproved(url.searchParams.get("token")));
     if (method === "GET" && url.pathname === "/paypal/cancel") return redirect(res, clientCancelled(url.searchParams.get("token")));
 
+    // Freelancer and client pages use different random IDs, so neither link leads to the other side.
     const match = url.pathname.match(/^\/(m|c)\/([\w-]+)(?:\/(\w+))?$/);
-    const milestone = match ? store.get(match[2]) : undefined;
+    const milestone = match ? (match[1] === "m" ? store.get(match[2]) : store.getByClient(match[2])) : undefined;
     if (match && milestone) {
       const [, view, , action] = match;
       if (method === "GET" && !action) {

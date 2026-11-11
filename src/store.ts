@@ -8,7 +8,10 @@ import type { SiteEvidence } from "./evidence.ts";
 export type Status = "AWAITING_HOLD" | "FUNDS_HELD" | "IN_REVIEW" | "PAID" | "HOLD_RELEASED" | "DECLINED";
 
 export type Milestone = {
+  /** The freelancer's private key: /m/<id>. Never shown to the client. */
   id: string;
+  /** The client's private key: /c/<clientId>. A separate random value, so the client's link can't be edited into the freelancer's. */
+  clientId: string;
   title: string;
   brief: string;
   amount: string;
@@ -28,7 +31,10 @@ const milestones = new Map<string, Milestone>(load().map((m) => [m.id, m]));
 
 function load(): Milestone[] {
   try {
-    return JSON.parse(readFileSync(FILE, "utf8")) as Milestone[];
+    const saved = JSON.parse(readFileSync(FILE, "utf8")) as Milestone[];
+    // Milestones saved before client links existed get one now.
+    for (const m of saved) m.clientId ??= newId();
+    return saved;
   } catch (err) {
     if ((err as NodeJS.ErrnoException).code !== "ENOENT") console.warn(`Couldn't read ${FILE}, starting empty:`, err);
     return [];
@@ -56,8 +62,13 @@ export function get(id: string): Milestone | undefined {
   return milestones.get(id);
 }
 
-export function all(): Milestone[] {
-  return [...milestones.values()].reverse();
+export function getByClient(clientId: string): Milestone | undefined {
+  return [...milestones.values()].find((m) => m.clientId === clientId);
+}
+
+/** The milestones with these freelancer IDs, newest first. */
+export function some(ids: string[]): Milestone[] {
+  return ids.flatMap((id) => milestones.get(id) ?? []).sort((a, b) => b.createdAt.localeCompare(a.createdAt));
 }
 
 export function findByOrder(orderId: string | null): Milestone {
