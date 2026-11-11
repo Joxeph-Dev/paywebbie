@@ -19,6 +19,15 @@ const STATUS: Record<Status, { label: string; tone: Tone; icon: IconName }> = {
 
 const STEPS = ["Checklist agreed", "Money held", "Work checked", "Paid"];
 const STEP_REACHED: Record<Status, number> = { AWAITING_HOLD: 1, FUNDS_HELD: 2, IN_REVIEW: 3, PAID: 4, HOLD_RELEASED: 3, DECLINED: 1 };
+// What the freelancer can do next, shown as the button on each row of "Your milestones".
+const NEXT_ACTION: Record<Status, string> = {
+  AWAITING_HOLD: "Get the client link",
+  FUNDS_HELD: "Submit your work",
+  IN_REVIEW: "View the report",
+  PAID: "View",
+  HOLD_RELEASED: "View",
+  DECLINED: "View",
+};
 
 const VERDICT = {
   met: { icon: "checkCircle", label: "Met" },
@@ -49,7 +58,8 @@ export function home(milestones: Milestone[], appUrl: string, demo: boolean, mes
     .map(
       (m) => `<li class="milestone-row">
         <a class="row-main" href="/m/${m.id}"><strong>${escapeHtml(m.title)}</strong>${statusBadge(m.status)}</a>
-        <div class="row-side"><span class="money">$${m.amount}</span></div>
+        <div class="row-side"><span class="money">$${m.amount}</span>
+          <a class="button button-small${m.status === "FUNDS_HELD" ? " button-primary" : ""}" href="/m/${m.id}#next">${NEXT_ACTION[m.status]}</a></div>
       </li>`,
     )
     .join("");
@@ -80,7 +90,7 @@ export function home(milestones: Milestone[], appUrl: string, demo: boolean, mes
         <label for="amount">Amount (USD)</label>
         <div class="input-money"><span aria-hidden="true">$</span><input id="amount" name="amount" inputmode="decimal" required${value("amount")} placeholder="150"></div>
         <button class="button button-primary button-block">${icon("clipboard", 18)} Draft the checklist with AI</button>      </form>
-      <section class="card">
+      <section class="card" id="milestones">
         <h2>Your milestones</h2>
         ${rows ? `<ul class="milestones">${rows}</ul>` : `<div class="empty">${icon("clipboard", 28)}<p>No milestones yet. The ones you create will appear here.</p></div>`}
       </section>
@@ -96,14 +106,22 @@ export function freelancerPage(m: Milestone, appUrl: string, messages: Messages)
   const lastChange = m.status === "FUNDS_HELD" ? m.changeRequests.at(-1) : undefined;
   let action = "";
   if (m.status === "AWAITING_HOLD") {
-    action = `<section class="card card-action">
+    action = `<section class="card card-action" id="next">
+      <p class="step-kicker">Your next step</p>
       <h2>${icon("send", 20)} Send this link to your client</h2>
       <p>They review the checklist and hold the payment with PayPal. Start work once the money is held.</p>
       ${copyLink}
+      ${waiting("Waiting for your client. This page updates by itself when the money is held.")}
+    </section>
+    <section class="card card-locked" aria-label="Coming up">
+      <p class="step-kicker">${icon("lock", 14)} Coming up</p>
+      <h2>Done with the website?</h2>
+      <p>Once the money is held, a box appears here to submit the finished website and run the checks.</p>
     </section>`;
   } else if (m.status === "FUNDS_HELD") {
-    action = `<form class="card card-action" method="post" action="/m/${m.id}/submit" data-busy="Checking the website…">
-      <h2>${icon("globe", 20)} Submit your work</h2>
+    action = `<form class="card card-action" id="next" method="post" action="/m/${m.id}/submit" data-busy="Checking the website…">
+      <p class="step-kicker">Your next step</p>
+      <h2>${icon("globe", 20)} Done with the website? Submit it</h2>
       ${lastChange ? `<div class="notice tone-bad" role="status">${icon("message", 18)}<div><strong>Your client asked for changes</strong><p>“${escapeHtml(lastChange.note)}”</p></div></div>` : ""}
       <p>${heldUntil(m)}</p>
       <label for="url">Live website address</label>
@@ -113,14 +131,23 @@ export function freelancerPage(m: Milestone, appUrl: string, messages: Messages)
       <button class="button button-primary button-block">${icon("shieldCheck", 18)} Submit and run the checks</button>
     </form>`;
   } else if (m.status === "IN_REVIEW") {
-    action = `<section class="card card-action">
+    action = `<section class="card card-action" id="next">
+      <p class="step-kicker">Nothing for you to do right now</p>
       <h2>${icon("eye", 20)} Your client is reviewing</h2>
       <p>They can approve and pay, ask for changes, or release the hold. The money stays held until they decide.</p>
       <p class="help">Your client reviews on their own link:</p>
       ${copyLink}
+      ${waiting("Waiting for your client. This page updates by itself when they decide.")}
+    </section>`;
+  } else {
+    action = `<section class="card card-action" id="next">
+      <h2>${m.status === "PAID" ? "This milestone is finished" : "This milestone is closed"}</h2>
+      <p>${m.status === "PAID" ? "The payment has been captured. Ready for the next job?" : "No money moved. You can agree a new milestone with your client."}</p>
+      <a class="button button-primary button-block" href="/">${icon("clipboard", 18)} Start a new milestone</a>
     </section>`;
   }
-  return milestonePage(m, "freelancer", messages, m.submission ? report(m) : checklist(m), action);
+  const back = `<a class="back-link" href="/#milestones">${icon("arrowLeft", 16)} Your milestones</a>`;
+  return milestonePage(m, "freelancer", messages, m.submission ? report(m) : checklist(m), action, back);
 }
 
 export function clientPage(m: Milestone, messages: Messages): string {
@@ -136,8 +163,9 @@ export function clientPage(m: Milestone, messages: Messages): string {
   } else if (m.status === "FUNDS_HELD") {
     action = `<section class="card card-action">
       <h2>${icon("lock", 20)} Money held</h2>
-      <p>Waiting for the freelancer to deliver. ${heldUntil(m)}</p>
+      <p>${heldUntil(m)}</p>
       <p class="help">You'll review an evidence report before any money moves.</p>
+      ${waiting("Waiting for the freelancer to deliver. This page updates by itself when the work is submitted.")}
     </section>`;
   } else if (m.status === "IN_REVIEW") {
     action = `<section class="card card-action">
@@ -174,19 +202,33 @@ export function notFound(milestoneLink = false): string {
 
 // ---- Pieces ----
 
-function milestonePage(m: Milestone, role: "freelancer" | "client", messages: Messages, main: string, action: string): string {
+function milestonePage(m: Milestone, role: "freelancer" | "client", messages: Messages, main: string, action: string, back = ""): string {
+  // While the other person still has a move to make, the page watches for it and refreshes itself,
+  // so nobody has to reload or go hunting for the next step.
+  const open = m.status === "AWAITING_HOLD" || m.status === "FUNDS_HELD" || m.status === "IN_REVIEW";
+  const watch = open ? { url: `/${role === "client" ? `c/${m.clientId}` : `m/${m.id}`}/state`, state: stateOf(m) } : undefined;
   // The outcome sits right under the summary so phones see it first, not after the whole report.
   return layout(
     m.title,
     role,
     messages,
-    `${summary(m)}
+    `${back}${summary(m)}
     ${outcome(m)}
     <div class="page-grid">
       <div class="page-main">${main}</div>
       ${action ? `<aside class="page-side">${action}</aside>` : ""}
     </div>`,
+    watch,
   );
+}
+
+/** Changes whenever either side moves the milestone forward. Pages compare it to know when to refresh. */
+export function stateOf(m: Milestone): string {
+  return `${m.status}:${m.changeRequests.length}:${m.submission?.submittedAt ?? ""}`;
+}
+
+function waiting(text: string): string {
+  return `<p class="waiting" role="status"><span class="pulse" aria-hidden="true"></span>${text}</p>`;
 }
 
 function summary(m: Milestone): string {
@@ -290,7 +332,13 @@ function statusBadge(status: Status): string {
   return `<span class="badge tone-${tone}">${icon(name, 14)}${label}</span>`;
 }
 
-function layout(title: string, role: "freelancer" | "client" | undefined, messages: Messages, body: string): string {
+function layout(
+  title: string,
+  role: "freelancer" | "client" | undefined,
+  messages: Messages,
+  body: string,
+  watch?: { url: string; state: string },
+): string {
   const roleLabel = role ? `<span class="role-pill">Viewing as <strong>${role === "client" ? "Client" : "Freelancer"}</strong></span>` : "";
   const notice = (kind: "ok" | "bad", text: string) =>
     `<div class="notice tone-${kind}" role="${kind === "bad" ? "alert" : "status"}">${icon(kind === "ok" ? "checkCircle" : "xCircle", 20)}<p>${escapeHtml(text.slice(0, 400))}</p></div>`;
@@ -305,7 +353,7 @@ function layout(title: string, role: "freelancer" | "client" | undefined, messag
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap">
 <style>${CSS}</style>
 </head>
-<body>
+<body${watch ? ` data-watch="${watch.url}" data-state="${escapeHtml(watch.state)}"` : ""}>
 <a class="skip-link" href="#main">Skip to content</a>
 <header class="topbar"><div class="topbar-inner">
   ${
@@ -332,6 +380,18 @@ document.addEventListener("submit", (event) => {
     setTimeout(() => { for (const b of document.querySelectorAll("button")) b.disabled = true; }, 0);
   }
 });
+const watch = document.body.dataset.watch;
+if (watch) {
+  const check = async () => {
+    if (document.hidden || document.querySelector("form[aria-busy]")) return;
+    try {
+      const res = await fetch(watch, { cache: "no-store" });
+      if (res.ok && (await res.text()) !== document.body.dataset.state) location.replace(location.pathname);
+    } catch {}
+  };
+  setInterval(check, 4000);
+  document.addEventListener("visibilitychange", check);
+}
 document.addEventListener("click", (event) => {
   const fill = event.target.closest("[data-fill]");
   if (fill) { const input = document.getElementById(fill.dataset.fill); input.value = fill.dataset.value; input.focus(); }
@@ -363,6 +423,7 @@ const ICONS = {
   globe: '<circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c2.5 2.6 3.8 5.6 3.8 9s-1.3 6.4-3.8 9c-2.5-2.6-3.8-5.6-3.8-9S9.5 5.6 12 3Z"/>',
   message: '<path d="M20 15a2 2 0 0 1-2 2H8l-4 4V6a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v9Z"/>',
   clock: '<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>',
+  arrowLeft: '<path d="M19 12H5M11 6l-6 6 6 6"/>',
   lightning: '<path d="M13 2 4 14h7l-1 8 9-12h-7l1-8Z"/>',
 } as const;
 
@@ -431,6 +492,17 @@ main { max-width: 1080px; margin: 0 auto; padding: var(--space-5) var(--space-4)
 .card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: var(--space-5); box-shadow: var(--shadow); margin-bottom: var(--space-4); }
 .card-head { display: flex; justify-content: space-between; align-items: center; gap: var(--space-3); flex-wrap: wrap; margin-bottom: var(--space-3); }
 .card-action h2 { margin-bottom: var(--space-3); }
+#next { scroll-margin-top: 96px; }
+.step-kicker { display: flex; align-items: center; gap: 6px; margin: 0 0 var(--space-1); font-size: .75rem; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--primary); }
+.card-locked { border-style: dashed; box-shadow: none; background: transparent; }
+.card-locked .step-kicker, .card-locked h2, .card-locked p { color: var(--muted); }
+.card-locked h2 { margin-bottom: var(--space-2); }
+.card-locked p:last-child { margin-bottom: 0; }
+.waiting { display: flex; align-items: flex-start; gap: var(--space-2); margin: var(--space-4) 0 0; padding-top: var(--space-3); border-top: 1px solid var(--border); font-size: .875rem; color: var(--muted); }
+.pulse { flex: none; width: 10px; height: 10px; margin-top: 6px; border-radius: 50%; background: var(--primary); animation: pulse 1.6s ease-in-out infinite; }
+@keyframes pulse { 0%, 100% { opacity: 1; transform: scale(1); } 50% { opacity: .35; transform: scale(.8); } }
+.back-link { display: inline-flex; align-items: center; gap: var(--space-1); min-height: 44px; margin-bottom: var(--space-2); font-weight: 600; font-size: .9rem; text-decoration: none; }
+.back-link:hover { text-decoration: underline; }
 .stack-top { margin-top: var(--space-4); padding-top: var(--space-4); border-top: 1px solid var(--border); }
 
 .hero { padding: var(--space-4) 0 var(--space-5); max-width: 720px; }

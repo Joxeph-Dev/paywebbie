@@ -234,6 +234,10 @@ const server = createServer(async (req, res) => {
     const milestone = match ? (match[1] === "m" ? store.get(match[2]) : store.getByClient(match[2])) : undefined;
     if (match && milestone) {
       const [, view, , action] = match;
+      // Open pages poll this to notice when the other side has acted.
+      if (method === "GET" && action === "state") {
+        return void res.writeHead(200, { "Content-Type": "text/plain", "Cache-Control": "no-store" }).end(views.stateOf(milestone));
+      }
       if (method === "GET" && !action) {
         return html(res, view === "m" ? views.freelancerPage(milestone, APP_URL, messages) : views.clientPage(milestone, messages));
       }
