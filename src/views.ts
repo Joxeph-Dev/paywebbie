@@ -70,7 +70,7 @@ export function home(milestones: Milestone[], appUrl: string, demo: boolean, mes
       <form class="card" method="post" action="/milestones" data-busy="The AI is drafting the checklist…">
         <div class="card-head">
           <h2>New milestone</h2>
-          ${demo ? `<span class="badge tone-held">${icon("lightning", 14)} Demo example filled in</span>` : `<a class="button button-small" href="/?demo">${icon("lightning", 16)} Fill in the demo example</a>`}
+          ${demo ? `<span class="badge tone-held">${icon("lightning", 14)} Example filled in</span>` : `<a class="button button-small" href="/?demo">${icon("lightning", 16)} Try an example</a>`}
         </div>
         <label for="title">What you'll deliver</label>
         <input id="title" name="title" maxlength="127" required${value("title")} placeholder="Restaurant website: home, menu and contact">
@@ -79,12 +79,10 @@ export function home(milestones: Milestone[], appUrl: string, demo: boolean, mes
         <p class="help" id="brief-help">The AI turns this into a checklist you'll both see before any money is held.</p>
         <label for="amount">Amount (USD)</label>
         <div class="input-money"><span aria-hidden="true">$</span><input id="amount" name="amount" inputmode="decimal" required${value("amount")} placeholder="150"></div>
-        <button class="button button-primary button-block">${icon("clipboard", 18)} Draft the checklist with AI</button>
-        ${demo ? `<p class="help">Demo tip: when it's time to submit work, use <code>${escapeHtml(appUrl)}/demo/</code>, a sample restaurant site with deliberate gaps.</p>` : ""}
-      </form>
+        <button class="button button-primary button-block">${icon("clipboard", 18)} Draft the checklist with AI</button>      </form>
       <section class="card">
         <h2>Your milestones</h2>
-        ${rows ? `<ul class="milestones">${rows}</ul>` : `<div class="empty">${icon("clipboard", 28)}<p>No milestones yet. Create one, or try the demo example.</p></div>`}
+        ${rows ? `<ul class="milestones">${rows}</ul>` : `<div class="empty">${icon("clipboard", 28)}<p>No milestones yet. The ones you create will appear here.</p></div>`}
       </section>
     </div>`,
   );
@@ -95,7 +93,7 @@ export function freelancerPage(m: Milestone, appUrl: string, messages: Messages)
   // In real use the freelancer sends the link. This shortcut lets one person try both sides,
   // and opens in a new tab so the freelancer's page stays where it was.
   const clientPreview = `<a class="button button-block" href="/c/${m.clientId}" target="_blank" rel="noopener">${icon("external", 18)} Preview your client's page</a>
-      <p class="help">Demo shortcut. In real use, your client opens the link you send them.</p>`;
+      <p class="help">See exactly what your client sees. Opens in a new tab.</p>`;
   const lastChange = m.status === "FUNDS_HELD" ? m.changeRequests.at(-1) : undefined;
   let action = "";
   if (m.status === "AWAITING_HOLD") {
@@ -112,8 +110,9 @@ export function freelancerPage(m: Milestone, appUrl: string, messages: Messages)
       ${lastChange ? `<div class="notice tone-bad" role="status">${icon("message", 18)}<div><strong>Your client asked for changes</strong><p>“${escapeHtml(lastChange.note)}”</p></div></div>` : ""}
       <p>${heldUntil(m)}</p>
       <label for="url">Live website address</label>
-      <input id="url" name="url" type="url" required placeholder="${escapeHtml(appUrl)}/demo/">
+      <input id="url" name="url" type="url" required placeholder="https://www.your-clients-site.com">
       <p class="help">The app visits the site, collects evidence and checks it against the checklist. This takes up to a minute.</p>
+      <p class="help">No site ready yet? <button type="button" class="link-button" data-fill="url" data-value="${escapeHtml(appUrl)}/demo/">Use the sample restaurant site</button></p>
       <button class="button button-primary button-block">${icon("shieldCheck", 18)} Submit and run the checks</button>
     </form>`;
   } else if (m.status === "IN_REVIEW") {
@@ -168,8 +167,8 @@ export function clientPage(m: Milestone, messages: Messages): string {
 // so say that plainly instead of leaving a judge at a dead end.
 export function notFound(milestoneLink = false): string {
   const body = milestoneLink
-    ? `<h1>This milestone is no longer saved</h1><p>This demo runs on a free server that clears its saved milestones when it restarts after being idle. Nothing was charged. Start a new milestone to try again: it takes about a minute.</p>
-    <a class="button button-primary" href="/?demo">Start a new demo milestone</a>`
+    ? `<h1>This milestone is no longer saved</h1><p>The server restarted after being idle and cleared its saved milestones. Nothing was charged. Start a new milestone to try again: it takes about a minute.</p>
+    <a class="button button-primary" href="/">Start a new milestone</a>`
     : `<h1>Page not found</h1><p>The link may be wrong.</p>
     <a class="button button-primary" href="/">Back to the start</a>`;
   return layout(milestoneLink ? "Milestone not saved" : "Not found", undefined, {}, `<section class="card empty-page">${body}</section>`);
@@ -323,7 +322,7 @@ ${messages.error ? notice("bad", messages.error) : ""}
 ${messages.notice ? notice("ok", messages.notice) : ""}
 ${body}
 </main>
-<footer class="footer">PayPal sandbox demo · AI checks by Gemini · The client always makes the final call.</footer>
+<footer class="footer">PayPal sandbox: no real money moves · AI checks by Gemini · The client always makes the final call.</footer>
 <script>
 document.addEventListener("submit", (event) => {
   const form = event.target;
@@ -334,6 +333,10 @@ document.addEventListener("submit", (event) => {
     form.setAttribute("aria-busy", "true");
     setTimeout(() => { for (const b of document.querySelectorAll("button")) b.disabled = true; }, 0);
   }
+});
+document.addEventListener("click", (event) => {
+  const fill = event.target.closest("[data-fill]");
+  if (fill) { const input = document.getElementById(fill.dataset.fill); input.value = fill.dataset.value; input.focus(); }
 });
 document.addEventListener("click", async (event) => {
   const button = event.target.closest("[data-copy]");
@@ -490,6 +493,7 @@ textarea { resize: vertical; }
 .row-main:hover strong { text-decoration: underline; }
 .row-side { display: flex; align-items: center; gap: var(--space-4); }
 .money { font-weight: 700; }
+.link-button { background: none; border: 0; padding: 0; font: inherit; font-weight: 600; color: var(--primary); text-decoration: underline; text-underline-offset: 3px; cursor: pointer; }
 .link-quiet { display: inline-flex; align-items: center; gap: var(--space-1); font-weight: 600; font-size: .9rem; min-height: 44px; }
 .empty { display: grid; justify-items: center; gap: var(--space-2); text-align: center; color: var(--muted); padding: var(--space-5) 0; }
 
