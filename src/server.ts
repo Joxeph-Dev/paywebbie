@@ -228,5 +228,11 @@ const server = createServer(async (req, res) => {
 server.listen(PORT, () => {
   console.log(`Proof-of-Done running at ${APP_URL}`);
   if (!paypal.hasCredentials()) console.log("Missing PayPal credentials: add them to .env.");
+  // Check the PayPal login once at startup so a bad key shows up in the server log, not mid-demo.
+  else
+    paypal.requestToken().then(
+      (t) => console.log(`PayPal sandbox login OK (app ${t.app_id ?? "unknown"}).`),
+      (err) => console.log(`PayPal sandbox login FAILED: ${err instanceof Error ? err.message : err}`),
+    );
   if (!ai.hasApiKey()) console.log("Missing GEMINI_API_KEY: add it to .env.");
 });

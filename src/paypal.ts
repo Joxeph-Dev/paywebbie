@@ -47,15 +47,20 @@ export class PayPalError extends Error {
   }
 }
 
+// Trimmed because keys pasted into a hosting dashboard easily pick up a stray space or line break,
+// which PayPal rejects as invalid_client.
+const clientId = () => (process.env.PAYPAL_CLIENT_ID ?? "").trim();
+const clientSecret = () => (process.env.PAYPAL_CLIENT_SECRET ?? "").trim();
+
 export function hasCredentials(): boolean {
-  return Boolean(process.env.PAYPAL_CLIENT_ID && process.env.PAYPAL_CLIENT_SECRET);
+  return Boolean(clientId() && clientSecret());
 }
 
 type TokenResponse = { access_token: string; expires_in: number; app_id?: string };
 
 export async function requestToken(): Promise<TokenResponse> {
   if (!hasCredentials()) throw new Error("PAYPAL_CLIENT_ID and PAYPAL_CLIENT_SECRET are not set.");
-  const basic = Buffer.from(`${process.env.PAYPAL_CLIENT_ID}:${process.env.PAYPAL_CLIENT_SECRET}`).toString("base64");
+  const basic = Buffer.from(`${clientId()}:${clientSecret()}`).toString("base64");
   const res = await fetch(`${API_URL}/v1/oauth2/token`, {
     method: "POST",
     headers: { Authorization: `Basic ${basic}`, "Content-Type": "application/x-www-form-urlencoded" },
