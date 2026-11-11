@@ -35,6 +35,13 @@ const VERDICT = {
   client_to_check: { icon: "eye", label: "For you to check" },
 } as const;
 
+type Role = "freelancer" | "client";
+
+/** Taste is the client's call, so only the client's page says "you". */
+function verdictLabel(verdict: keyof typeof VERDICT, role: Role): string {
+  return verdict === "client_to_check" && role === "freelancer" ? "For the client to check" : VERDICT[verdict].label;
+}
+
 export const DEMO = {
   title: "Restaurant website: home, menu and contact",
   brief:
@@ -147,7 +154,7 @@ export function freelancerPage(m: Milestone, appUrl: string, messages: Messages)
     </section>`;
   }
   const back = `<a class="back-link" href="/#milestones">${icon("arrowLeft", 16)} Your milestones</a>`;
-  return milestonePage(m, "freelancer", messages, m.submission ? report(m) : checklist(m), action, back);
+  return milestonePage(m, "freelancer", messages, m.submission ? report(m, "freelancer") : checklist(m), action, back);
 }
 
 export function clientPage(m: Milestone, messages: Messages): string {
@@ -186,7 +193,7 @@ export function clientPage(m: Milestone, messages: Messages): string {
     </section>`;
   }
   const brief = `<section class="card"><h2>What you asked for</h2><p class="brief">${escapeHtml(m.brief)}</p></section>`;
-  return milestonePage(m, "client", messages, `${brief}${m.submission ? report(m) : checklist(m)}`, action);
+  return milestonePage(m, "client", messages, `${brief}${m.submission ? report(m, "client") : checklist(m)}`, action);
 }
 
 // A milestone link that no longer resolves is almost always the free demo server having restarted,
@@ -214,7 +221,7 @@ function milestonePage(m: Milestone, role: "freelancer" | "client", messages: Me
     messages,
     `${back}${summary(m)}
     ${outcome(m)}
-    <div class="page-grid">
+    <div class="page-grid${action ? " has-side" : ""}">
       <div class="page-main">${main}</div>
       ${action ? `<aside class="page-side">${action}</aside>` : ""}
     </div>`,
@@ -271,14 +278,14 @@ function outcome(m: Milestone): string {
   return "";
 }
 
-function report(m: Milestone): string {
+function report(m: Milestone, role: Role): string {
   const { url, evidence, verdict } = m.submission!;
   const results = m.criteria.map((criterion, index) => ({
     criterion,
     result: verdict.results.find((r) => r.index === index) ?? {
       index,
       verdict: "client_to_check" as const,
-      evidence: "The AI didn't assess this one, so please check it yourself.",
+      evidence: "The AI didn't assess this one, so the client checks it on the site.",
     },
   }));
   const count = (v: keyof typeof VERDICT) => results.filter((r) => r.result.verdict === v).length;
@@ -286,7 +293,7 @@ function report(m: Milestone): string {
   const items = results
     .map(({ criterion, result }) => `<li class="result tone-${tones[result.verdict]}">
       <span class="result-icon">${icon(VERDICT[result.verdict].icon, 20)}</span>
-      <div><div class="result-head"><strong>${escapeHtml(criterion.text)}</strong><span class="result-label">${VERDICT[result.verdict].label}</span></div>
+      <div><div class="result-head"><strong>${escapeHtml(criterion.text)}</strong><span class="result-label">${verdictLabel(result.verdict, role)}</span></div>
       <p>${escapeHtml(result.evidence)}</p></div>
     </li>`)
     .join("");
@@ -297,7 +304,7 @@ function report(m: Milestone): string {
     <div class="tally">
       <div class="tally-item tone-ok"><span class="tally-num">${count("met")}</span><span>Met</span></div>
       <div class="tally-item tone-bad"><span class="tally-num">${count("not_met")}</span><span>Not met</span></div>
-      <div class="tally-item tone-review"><span class="tally-num">${count("client_to_check")}</span><span>For you to check</span></div>
+      <div class="tally-item tone-review"><span class="tally-num">${count("client_to_check")}</span><span>${verdictLabel("client_to_check", role)}</span></div>
     </div>
     <p class="summary-text">${escapeHtml(verdict.summary)}</p>
     <ul class="results">${items}</ul>
@@ -628,7 +635,8 @@ td:first-child { overflow-wrap: anywhere; min-width: 180px; }
   main { padding-top: var(--space-6); }
   .how { grid-template-columns: repeat(4, 1fr); }
   .home-grid { grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr); align-items: start; }
-  .page-grid { grid-template-columns: minmax(0, 1fr) 340px; align-items: start; }
+  /* Without a side card, the boxes run full width so they line up with the summary and outcome above. */
+  .page-grid.has-side { grid-template-columns: minmax(0, 1fr) 340px; align-items: start; }
   .page-side { position: sticky; top: 88px; }
 }
 @media (max-width: 480px) {
