@@ -90,19 +90,16 @@ export function home(milestones: Milestone[], appUrl: string, demo: boolean, mes
 
 export function freelancerPage(m: Milestone, appUrl: string, messages: Messages): string {
   const clientLink = `${appUrl}/c/${m.clientId}`;
-  // In real use the freelancer sends the link. This shortcut lets one person try both sides,
-  // and opens in a new tab so the freelancer's page stays where it was.
-  const clientPreview = `<a class="button button-block" href="/c/${m.clientId}" target="_blank" rel="noopener">${icon("external", 18)} Preview your client's page</a>
-      <p class="help">See exactly what your client sees. Opens in a new tab.</p>`;
+  // The freelancer only ever shares the client link. There is deliberately no button into the client side.
+  const copyLink = `<div class="copy-field"><code id="client-link">${escapeHtml(clientLink)}</code>
+        <button type="button" class="button button-small" data-copy="client-link">${icon("copy", 16)} Copy</button></div>`;
   const lastChange = m.status === "FUNDS_HELD" ? m.changeRequests.at(-1) : undefined;
   let action = "";
   if (m.status === "AWAITING_HOLD") {
     action = `<section class="card card-action">
       <h2>${icon("send", 20)} Send this link to your client</h2>
       <p>They review the checklist and hold the payment with PayPal. Start work once the money is held.</p>
-      <div class="copy-field"><code id="client-link">${escapeHtml(clientLink)}</code>
-        <button type="button" class="button button-small" data-copy="client-link">${icon("copy", 16)} Copy</button></div>
-      ${clientPreview}
+      ${copyLink}
     </section>`;
   } else if (m.status === "FUNDS_HELD") {
     action = `<form class="card card-action" method="post" action="/m/${m.id}/submit" data-busy="Checking the website…">
@@ -119,7 +116,8 @@ export function freelancerPage(m: Milestone, appUrl: string, messages: Messages)
     action = `<section class="card card-action">
       <h2>${icon("eye", 20)} Your client is reviewing</h2>
       <p>They can approve and pay, ask for changes, or release the hold. The money stays held until they decide.</p>
-      ${clientPreview}
+      <p class="help">Your client reviews on their own link:</p>
+      ${copyLink}
     </section>`;
   }
   return milestonePage(m, "freelancer", messages, m.submission ? report(m) : checklist(m), action);

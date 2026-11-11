@@ -27,7 +27,7 @@ The demo runs on Render's free plan, which sleeps when idle, so the first visit 
 ## Try the demo
 
 1. Open the app and click **Try an example**, then **Draft the checklist with AI**.
-2. The freelancer and the client get separate private links. Copy the client link into another window, or click **Preview your client's page** (a demo shortcut that opens a new tab). There, click **Hold $150.00 with PayPal** and log in with a PayPal **sandbox personal** account. For judges, the test buyer login is in the Devpost submission.
+2. The freelancer and the client get separate private links. To play both sides, copy the client link and open it in another tab or window. There, click **Hold $150.00 with PayPal** and log in with a PayPal **sandbox personal** account. For judges, the test buyer login is in the Devpost submission.
 3. Back on the freelancer tab, refresh and click **Use the sample restaurant site** (it fills in `<app address>/demo/`), then submit. It's a restaurant site with deliberate gaps: no booking form, a broken Gallery link, and an image without alt text.
 4. Refresh the client tab to read the evidence report, then approve, request changes, or reject.
 
