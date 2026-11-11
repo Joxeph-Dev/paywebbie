@@ -218,7 +218,7 @@ const server = createServer(async (req, res) => {
       const handler = action ? (view === "m" ? FREELANCER_ACTIONS : CLIENT_ACTIONS).get(action) : undefined;
       if (method === "POST" && handler) return redirect(res, await handler(milestone, await readForm(req)));
     }
-    html(res, views.notFound(), 404);
+    html(res, views.notFound(Boolean(match && !milestone)), 404);
   } catch (err) {
     console.error(`${method} ${url.pathname} failed:`, err);
     redirect(res, withMessage(backTo(url.pathname), "error", describeError(err)));
@@ -228,5 +228,5 @@ const server = createServer(async (req, res) => {
 server.listen(PORT, () => {
   console.log(`Proof-of-Done running at ${APP_URL}`);
   if (!paypal.hasCredentials()) console.log("Missing PayPal credentials: add them to .env.");
-  if (!ai.hasApiKey()) console.log("Missing ANTHROPIC_API_KEY: add it to .env.");
+  if (!ai.hasApiKey()) console.log("Missing GEMINI_API_KEY: add it to .env.");
 });

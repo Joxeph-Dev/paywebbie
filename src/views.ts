@@ -160,14 +160,15 @@ export function clientPage(m: Milestone, messages: Messages): string {
   return milestonePage(m, "client", messages, `${brief}${m.submission ? report(m) : checklist(m)}`, action);
 }
 
-export function notFound(): string {
-  return layout(
-    "Not found",
-    undefined,
-    {},
-    `<section class="card empty-page"><h1>Page not found</h1><p>The link may be wrong or the milestone no longer exists.</p>
-    <a class="button button-primary" href="/">Back to the start</a></section>`,
-  );
+// A milestone link that no longer resolves is almost always the free demo server having restarted,
+// so say that plainly instead of leaving a judge at a dead end.
+export function notFound(milestoneLink = false): string {
+  const body = milestoneLink
+    ? `<h1>This milestone is no longer saved</h1><p>This demo runs on a free server that clears its saved milestones when it restarts after being idle. Nothing was charged. Start a new milestone to try again: it takes about a minute.</p>
+    <a class="button button-primary" href="/?demo">Start a new demo milestone</a>`
+    : `<h1>Page not found</h1><p>The link may be wrong.</p>
+    <a class="button button-primary" href="/">Back to the start</a>`;
+  return layout(milestoneLink ? "Milestone not saved" : "Not found", undefined, {}, `<section class="card empty-page">${body}</section>`);
 }
 
 // ---- Pieces ----
