@@ -142,8 +142,7 @@ export function freelancerPage(m: Milestone, appUrl: string, messages: Messages)
       <p class="step-kicker">Nothing for you to do right now</p>
       <h2>${icon("eye", 20)} Your client is reviewing</h2>
       <p>They can approve and pay, ask for changes, or release the hold. The money stays held until they decide.</p>
-      <p class="help">Your client reviews on their own link:</p>
-      ${copyLink}
+      <p class="help">Their page already shows this report, so there's nothing to send.</p>
       ${waiting("Waiting for your client. This page updates by itself when they decide.")}
     </section>`;
   } else {
