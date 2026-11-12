@@ -168,7 +168,7 @@ export function newProject(viewer: Viewer, example: number, messages: Messages):
       <div class="head-with-icon"><span class="head-icon">${icon("monitor", 30)}</span>
         <div><h1>Start a New Project</h1><p class="sub">Add the project requirements and client brief to create a secure, verifiable project.</p></div></div>
       <div class="examples" role="group" aria-label="Try an example"><span class="muted">Try an example:</span>${EXAMPLES.map(
-        (e, i) => `<a class="button button-small button-green" href="/new?demo=${i + 1}"${i === example ? ' aria-current="true"' : ""}>${e.label}</a>`,
+        (e, i) => `<a class="button button-small${i === example ? " button-primary" : ""}" href="/new?demo=${i + 1}"${i === example ? ' aria-current="true"' : ""}>${e.label}</a>`,
       ).join("")}</div>
     </div>
     <form class="new-grid" method="post" action="/milestones" data-busy="AI is drafting the checklist…">
@@ -1030,9 +1030,6 @@ main { flex: 1; width: 100%; max-width: 1520px; padding: 22px 32px 40px; }
 .button:hover { border-color: var(--ink); }
 .button-primary { background: var(--blue); border-color: var(--blue); color: #fff; box-shadow: 0 4px 14px rgba(10, 92, 255, .28); }
 .button-primary:hover { background: var(--blue-dark); border-color: var(--blue-dark); }
-.button-green { background: #22c55e; border-color: #22c55e; color: #052e16; font-weight: 700; }
-.button-green:hover { background: #4ade80; border-color: #4ade80; }
-.button-green[aria-current] { box-shadow: 0 0 0 2px #fff, 0 0 0 4px #15803d; }
 .button-small { min-height: 38px; padding: 0 14px; font-size: .86rem; }
 .button-block { width: 100%; }
 .button:disabled { opacity: .7; cursor: progress; }
