@@ -40,7 +40,7 @@ The demo runs on Render's free plan, which sleeps when idle, so the first visit 
 - **Chat per project.** Freelancer and client can message each other from the project page, with unread badges, so questions don't leave the app.
 - **No dead ends.** Each page shows the next step, and refreshes itself when the other person acts, so nobody has to reload or hunt for where to go.
 - **Safe crawling.** The checker refuses private-network addresses and checks every redirect, so a submitted URL can't probe the server's own network.
-- **Rand on screen, dollars at PayPal.** PayPal's sandbox rejects rand, so the app shows rand amounts and places the hold in dollars at a fixed demo rate (R18 = $1, `ZAR_PER_USD`).
+- **Rand on screen, dollars at PayPal.** PayPal's sandbox rejects rand, so the app shows rand amounts and places the hold in dollars at a fixed demo rate (R16.59 = $1, `ZAR_PER_USD`).
 - **Safe retries.** Every PayPal call that moves money sends a `PayPal-Request-Id`, so a double click or a retry can't capture twice.
 - **Free-tier friendly.** AI calls are capped per hour (`MAX_AI_CALLS_PER_HOUR`, default 40). If a Gemini model is busy or doesn't answer within 20 seconds, the app falls back through other Flash models, and gives up with a clear message after 90 seconds.
 
