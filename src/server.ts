@@ -37,6 +37,7 @@ ${brief}`);
     requirements,
     brief,
     freelancerName: optionalName(form, "freelancerName"),
+    example: [1, 2].includes(Number(form.get("example"))) ? Number(form.get("example")) : undefined,
     clientName: optionalName(form, "clientName"),
     amount,
     criteria,

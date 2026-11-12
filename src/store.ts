@@ -20,6 +20,8 @@ export type Milestone = {
   requirements?: string;
   brief: string;
   freelancerName?: string;
+  /** 1-based number of the example project this was started from, if any. It picks the sample site offered at submit time. */
+  example?: number;
   clientName?: string;
   amount: string;
   criteria: Criterion[];

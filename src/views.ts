@@ -70,21 +70,21 @@ export const DEMO = {
 };
 
 const DEMO_2 = {
-  title: "Kasi Flavours takeaway website",
+  title: "Nomsa's Table restaurant website",
   requirements:
-    "Homepage with opening hours\nMenu page with every dish and its price\nOrder page with a form for takeaway orders and a phone number\nCatering page with package prices\nWorks well on phones",
+    "Homepage with opening hours\nMenu page with every dish and its price\nContact page with the phone number and address\nA form to book a table\nWorks well on phones",
   brief:
-    "Kasi Flavours is a takeaway kitchen in Mdantsane that sells braai plates, kota sandwiches and fresh amagwinya. " +
-    "The owner wants a bold, friendly website where people can see the menu and prices and send a takeaway order without phoning.",
-  amount: "1200",
+    "Nomsa's Table is a family restaurant in Quigney, East London. The owner wants customers to find the opening hours and the menu with prices, " +
+    "call the restaurant, and book a table online.",
+  amount: "1500",
   freelancerName: "JoxephCode",
-  clientName: "Sipho Kasi",
+  clientName: "Nomsa Dlamini",
 };
 
-/** The two examples on the New Project page. */
+/** The two examples on the New Project page. The first sample site has deliberate gaps, the second passes every check. */
 const EXAMPLES = [
-  { label: "Mama Thandi's Kitchen", data: DEMO },
-  { label: "Kasi Flavours", data: DEMO_2 },
+  { label: "Mama Thandi's Kitchen", data: DEMO, site: "demo/" },
+  { label: "Nomsa's Table", data: DEMO_2, site: "demo/nomsa.html" },
 ];
 
 /** Who is looking at the page, so the shell can draw the right sidebar. */
@@ -131,7 +131,7 @@ export function home(milestones: Milestone[], viewer: Viewer, messages: Messages
     <div class="stats">${stats
       .map(([name, label, value]) => `<div class="card stat"><span class="stat-icon">${icon(name, 20)}</span><div><span class="muted">${label}</span><strong>${value}</strong></div></div>`)
       .join("")}</div>
-    <div class="two-col">
+    <div class="two-col even">
       <section class="card" id="projects">
         <div class="card-head"><div class="card-title">${icon("folder", 20, "plain")}<div><h2>My Projects</h2><p class="muted">Projects you created in this browser.</p></div></div></div>
         ${
@@ -171,6 +171,7 @@ export function newProject(viewer: Viewer, example: number, messages: Messages):
     </div>
     <div class="two-col">
       <form class="stack" method="post" action="/milestones" data-busy="AI is drafting the checklist…">
+        ${chosen ? `<input type="hidden" name="example" value="${example + 1}">` : ""}
         <section class="card">
           <div class="card-title">${icon("list", 22, "tile")}<div><h2><label for="requirements">Project Requirements <span class="req" aria-hidden="true">*</span></label></h2>
             <p class="muted">List the key features and deliverables for the website.</p></div></div>
@@ -547,6 +548,7 @@ function actionCard(m: Milestone, role: Role, appUrl: string): string {
       );
     }
     if (m.status === "FUNDS_HELD") {
+      const sample = m.example ? EXAMPLES[m.example - 1] : undefined;
       const lastChange = m.changeRequests.at(-1);
       return `<form class="card action-card" id="next" method="post" action="/m/${m.id}/submit" data-busy="Checking the website… (up to a minute)">
         <div class="action-head"><span class="action-icon">${icon("upload", 22)}</span><div><p class="kicker">Your next step</p>
@@ -558,7 +560,7 @@ function actionCard(m: Milestone, role: Role, appUrl: string): string {
             <input id="url" name="url" type="url" required placeholder="https://clients-website.com"></div>
           <button class="button button-primary">${icon("shieldCheck", 18)} Submit & run AI checks</button>
         </div>
-        <p class="help">No site ready yet? Use a sample restaurant site: <button type="button" class="link-button" data-fill="url" data-value="${escapeHtml(appUrl)}/demo/">Mama Thandi's</button> · <button type="button" class="link-button" data-fill="url" data-value="${escapeHtml(appUrl)}/demo/kasi.html">Kasi Flavours</button></p>
+        ${sample ? `<p class="help"><button type="button" class="link-button" data-fill="url" data-value="${escapeHtml(appUrl)}/${sample.site}">Use the example restaurant site</button></p>` : ""}
       </form>`;
     }
     if (m.status === "IN_REVIEW") {
@@ -998,6 +1000,7 @@ main { flex: 1; width: 100%; max-width: 1520px; padding: 22px 32px 40px; }
 .tile { display: grid; place-items: center; width: 48px; height: 48px; border-radius: 12px; background: var(--inset); color: var(--ink); flex: none; }
 .stack { display: grid; grid-template-columns: minmax(0, 1fr); gap: 18px; align-content: start; min-width: 0; }
 .stack-tight { display: grid; gap: 10px; margin-top: 12px; }
+.two-col.even { align-items: stretch; }
 .two-col { display: grid; grid-template-columns: minmax(0, 1fr) 380px; gap: 22px; align-items: start; }
 .empty, .preview-empty { display: grid; justify-items: center; gap: 12px; text-align: center; padding: 28px 12px; color: var(--muted); }
 .preview-empty { border: 1.5px dashed var(--line); border-radius: var(--radius-sm); background: var(--inset); }

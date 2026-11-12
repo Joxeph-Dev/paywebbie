@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Contact and bookings · Nomsa's Table</title>
+<style>
+body { margin: 0; font: 17px/1.6 Georgia, serif; background: #f6f9f4; color: #1f3326; }
+nav { display: flex; gap: 18px; padding: 16px 20px; background: #1f5a3a; flex-wrap: wrap; }
+nav a { color: #e8f5ec; text-decoration: none; font-family: system-ui, sans-serif; }
+main { max-width: 720px; margin: 0 auto; padding: 24px 20px 48px; }
+label { display: block; margin-top: 14px; font-family: system-ui, sans-serif; }
+input, select { width: 100%; padding: 10px; font: inherit; box-sizing: border-box; }
+button { margin-top: 18px; padding: 12px 22px; font: inherit; font-weight: 700; background: #1f5a3a; color: #fff; border: 0; border-radius: 8px; }
+</style>
+</head>
+<body>
+<nav><a href="nomsa.html">Home</a><a href="nomsa-menu.html">Menu</a><a href="nomsa-contact.html">Contact and bookings</a></nav>
+<main>
+  <h1>Contact and bookings</h1>
+  <p>14 Currie Street, Quigney, East London, 5201</p>
+  <p>Phone: <a href="tel:+27435550142">043 555 0142</a></p>
+  <p>Email: <a href="mailto:bookings@nomsastable.example">bookings@nomsastable.example</a></p>
+  <h2>Book a table</h2>
+  <form action="#" method="post">
+    <label for="name">Your name</label>
+    <input id="name" name="name" required>
+    <label for="phone">Cell number</label>
+    <input id="phone" name="phone" type="tel" required>
+    <label for="date">Date</label>
+    <input id="date" name="date" type="date" required>
+    <label for="guests">Number of guests</label>
+    <select id="guests" name="guests">
+      <option>1–2</option>
+      <option>3–4</option>
+      <option>5–8</option>
+    </select>
+    <button>Request a booking</button>
+  </form>
+</main>
+</body>
+</html>
