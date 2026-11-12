@@ -10,7 +10,7 @@ Freelancers deliver the work and then wait to be paid, or argue about whether "d
 
 Built by a student freelancer in East London, South Africa, who builds websites for local restaurants.
 
-**Live demo: <https://proof-of-done-wvfh.onrender.com>**
+**Live demo: <https://paywebbie.onrender.com>**
 
 The demo runs on Render's free plan, which sleeps when idle, so the first visit can take about a minute to load. Its saved milestones reset whenever the server restarts.
 
