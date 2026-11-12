@@ -2,7 +2,7 @@
 # so they never live in this repo. RENDER_EXTERNAL_URL is set by Render and used for PayPal's return URLs.
 services:
   - type: web
-    name: paywebbie
+    name: proof-of-done
     runtime: node
     plan: free
     buildCommand: npm install
