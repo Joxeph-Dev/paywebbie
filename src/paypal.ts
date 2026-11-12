@@ -1,4 +1,4 @@
-// Minimal client for the PayPal REST endpoints Proof-of-Done needs. Sandbox only for now.
+// Minimal client for the PayPal REST endpoints PayWebbie needs. Sandbox only for now.
 import { createHash, randomUUID } from "node:crypto";
 
 const API_URL = "https://api-m.sandbox.paypal.com";
@@ -144,7 +144,7 @@ export async function createHeldPaymentOrder(input: {
       payment_source: {
         paypal: {
           experience_context: {
-            brand_name: "Proof-of-Done",
+            brand_name: "PayWebbie",
             shipping_preference: "NO_SHIPPING",
             user_action: "PAY_NOW",
             return_url: input.returnUrl,

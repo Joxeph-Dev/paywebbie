@@ -1,8 +1,8 @@
-# Proof-of-Done
+# PayWebbie
 
 **Milestone payments for freelancers where "done" is backed by evidence.**
 
-Freelancers deliver the work and then wait to be paid, or argue about whether "done" means done. Proof-of-Done fixes both sides:
+Freelancers deliver the work and then wait to be paid, or argue about whether "done" means done. PayWebbie fixes both sides:
 
 - The **client's money is held by PayPal** while the freelancer works. The freelancer knows it exists, and the client isn't charged yet.
 - When the work is delivered, the app **visits the live website, collects evidence, and an AI checks it against the checklist both sides agreed on**.
@@ -18,7 +18,7 @@ The demo runs on Render's free plan, which sleeps when idle, so the first visit 
 
 | Step | Who | What happens | Tech |
 |---|---|---|---|
-| 1. Agree | Freelancer | Pastes the client's brief. The AI turns it into 3–8 concrete checklist items, each marked "checked automatically" or "client checks" (taste). | Gemini, structured JSON output |
+| 1. Agree | Freelancer | Adds the project requirements and the client's brief. The AI turns them into 3–8 concrete checklist items, each marked "checked automatically" or "client checks" (taste). | Gemini, structured JSON output |
 | 2. Hold | Client | Reviews the checklist and holds the payment. Nothing is charged. | PayPal Orders v2, `intent: AUTHORIZE` |
 | 3. Deliver | Freelancer | Submits the live website address. A crawler visits up to 8 pages and records headings, text, forms, phone links, image alt text, phone-ready settings and broken links. | Plain HTTP and HTML parsing, no AI |
 | 4. Check | AI | Judges each checklist item **only from that evidence**: ✓ met, ✕ not met, or ? for the client, with a quote or count as proof. | Gemini, structured JSON output |
@@ -26,10 +26,10 @@ The demo runs on Render's free plan, which sleeps when idle, so the first visit 
 
 ## Try the demo
 
-1. Open the app and click **Try an example**, then **Draft the checklist with AI**.
+1. Open the app, click **New Project**, then **Try an example**, then **Upload Project**.
 2. The freelancer and the client get separate private links. To play both sides, copy the client link and open it in another tab or window. There, click **Hold $150.00 with PayPal** and log in with a PayPal **sandbox personal** account. For judges, the test buyer login is in the Devpost submission.
-3. Back on the freelancer tab (it updates by itself once the money is held), click **Use the sample restaurant site** (it fills in `<app address>/demo/`), then submit. It's a restaurant site with deliberate gaps: no booking form, a broken Gallery link, and an image without alt text.
-4. Go back to the client tab (it also updates by itself) to read the evidence report, then approve, request changes, or reject.
+3. Back on the freelancer tab (it updates by itself once the money is held), click **Use the sample restaurant site** (it fills in `<app address>/demo/`), then **Submit & run AI checks**. It's a restaurant site with deliberate gaps: no booking form, a broken Gallery link, and an image without alt text.
+4. Go back to the client tab (it also updates by itself) to read the evidence report, then approve, request revisions, or reject. Each project also has a chat between the two sides (Messages).
 
 ## Design decisions
 
@@ -37,6 +37,7 @@ The demo runs on Render's free plan, which sleeps when idle, so the first visit 
 - **PayPal's 3-day catch.** PayPal holds authorized money for 29 days but only *guarantees* it for the first 3 (the honor period). When work is submitted on a hold older than 3 days, the app **reauthorizes** first, so the client reviews inside a fresh guarantee.
 - **Prompt injection.** Website text is written by the freelancer, so the AI is told to treat it as untrusted and ignore instructions in it. The client still decides.
 - **Separate sides.** The freelancer and the client each get their own random link, so the client's link can't be edited into the freelancer's page. The home page lists only the milestones created in your own browser.
+- **Chat per project.** Freelancer and client can message each other from the project page, with unread badges, so questions don't leave the app.
 - **No dead ends.** Each page shows the next step, and refreshes itself when the other person acts, so nobody has to reload or hunt for where to go.
 - **Safe crawling.** The checker refuses private-network addresses and checks every redirect, so a submitted URL can't probe the server's own network.
 - **Safe retries.** Every PayPal call that moves money sends a `PayPal-Request-Id`, so a double click or a retry can't capture twice.
@@ -90,7 +91,7 @@ The app runs TypeScript directly on Node 24 (type stripping): no build step. Mil
 | `src/paypal.ts` | PayPal REST client: OAuth, orders, authorize, capture, void, reauthorize |
 | `src/evidence.ts` | Website crawler and private-network guard |
 | `src/ai.ts` | Gemini prompts, schemas, fallbacks and the hourly cap |
-| `src/views.ts` | Server-rendered freelancer and client pages |
+| `src/views.ts` | Server-rendered dashboard, project, chat and new-project pages |
 | `src/store.ts` | Milestone storage |
 | `public/demo/` | Demo restaurant site with deliberate gaps |
 | `docs/VALIDATION.md` | Problem research and competitors |

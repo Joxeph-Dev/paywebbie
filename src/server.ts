@@ -1,4 +1,4 @@
-// Proof-of-Done: milestone payments where "done" is backed by evidence.
+// PayWebbie (was Proof-of-Done): milestone payments where "done" is backed by evidence.
 // Freelancer drafts an AI checklist → client holds the payment with PayPal → freelancer submits the live site →
 // the crawler collects evidence and Gemini judges each criterion → client approves (capture) or rejects (void).
 import { createServer, type IncomingMessage, type ServerResponse } from "node:http";
@@ -20,20 +20,31 @@ type Action = (milestone: store.Milestone, form: URLSearchParams) => Promise<str
 // ---- Freelancer actions ----
 
 async function createMilestone(form: URLSearchParams): Promise<string> {
-  const title = text(form, "title", 1, 127, "The title");
-  const brief = text(form, "brief", 10, 2000, "The brief");
+  const title = text(form, "title", 1, 127, "The project name");
+  const requirements = text(form, "requirements", 3, 1000, "The project requirements");
+  const brief = text(form, "brief", 10, 1000, "The client's brief");
   const amount = parseAmount(form.get("amount"));
-  const criteria = await ai.draftChecklist(title, brief);
+  // The AI sees both, so the checklist covers the features and the client's goals.
+  const criteria = await ai.draftChecklist(title, `Requirements:
+${requirements}
+
+Client's brief:
+${brief}`);
   const milestone: store.Milestone = {
     id: store.newId(),
     clientId: store.newId(),
     title,
+    requirements,
     brief,
+    freelancerName: optionalName(form, "freelancerName"),
+    clientName: optionalName(form, "clientName"),
     amount,
     criteria,
     status: "AWAITING_HOLD",
     createdAt: new Date().toISOString(),
     changeRequests: [],
+    messages: [],
+    seen: { freelancer: 0, client: 0 },
   };
   store.add(milestone);
   return `/m/${milestone.id}`;
@@ -121,12 +132,24 @@ function requestChanges(milestone: store.Milestone, form: URLSearchParams): stri
   return withMessage(`/c/${milestone.clientId}`, "notice", "The freelancer has your note. Your money stays on hold.");
 }
 
-const FREELANCER_ACTIONS = new Map<string, Action>([["submit", submitWork]]);
+function sendMessage(role: store.Role): Action {
+  return (milestone, form) => {
+    const body = text(form, "text", 1, 1000, "Your message");
+    milestone.messages.push({ from: role, text: body, at: new Date().toISOString() });
+    // Sending a message means the sender has read everything so far.
+    milestone.seen[role] = milestone.messages.length;
+    store.save();
+    return `${role === "client" ? `/c/${milestone.clientId}` : `/m/${milestone.id}`}/chat`;
+  };
+}
+
+const FREELANCER_ACTIONS = new Map<string, Action>([["submit", submitWork], ["message", sendMessage("freelancer")]]);
 const CLIENT_ACTIONS = new Map<string, Action>([
   ["hold", holdPayment],
   ["approve", approve],
   ["reject", reject],
   ["changes", requestChanges],
+  ["message", sendMessage("client")],
 ]);
 
 // ---- Helpers ----
@@ -135,6 +158,11 @@ function text(form: URLSearchParams, name: string, min: number, max: number, lab
   const value = (form.get(name) ?? "").trim();
   if (value.length < min || value.length > max) throw new Error(`${label} must be ${min}–${max} characters.`);
   return value;
+}
+
+function optionalName(form: URLSearchParams, name: string): string | undefined {
+  const value = (form.get(name) ?? "").trim().slice(0, 40);
+  return value || undefined;
 }
 
 function parseAmount(raw: string | null): string {
@@ -167,6 +195,7 @@ function describeError(err: unknown): string {
 
 /** Where to send someone after an error: back to the page they acted from. */
 function backTo(pathname: string): string {
+  if (pathname === "/milestones") return "/new";
   return pathname.match(/^\/[mc]\/[\w-]+/)?.[0] ?? "/";
 }
 
@@ -196,6 +225,11 @@ function rememberMilestone(req: IncomingMessage, id: string): string {
   return `${MINE_COOKIE}=${ids.join(".")}; Path=/; Max-Age=${60 * 60 * 24 * 30}; HttpOnly; SameSite=Lax${secure}`;
 }
 
+function freelancerViewer(req: IncomingMessage): views.Viewer {
+  const unread = store.some(myMilestones(req)).reduce((total, m) => total + views.unreadFor(m, "freelancer"), 0);
+  return { role: "freelancer", unread, name: store.some(myMilestones(req))[0]?.freelancerName };
+}
+
 function redirect(res: ServerResponse, location: string): void {
   res.writeHead(303, { Location: location }).end();
 }
@@ -217,7 +251,16 @@ const server = createServer(async (req, res) => {
   const messages = { notice: url.searchParams.get("notice"), error: url.searchParams.get("error") };
   try {
     if (method === "GET" && url.pathname === "/") {
-      return html(res, views.home(store.some(myMilestones(req)), APP_URL, url.searchParams.has("demo"), messages));
+      return html(res, views.home(store.some(myMilestones(req)), freelancerViewer(req), messages));
+    }
+    if (method === "GET" && url.pathname === "/new") {
+      return html(res, views.newProject(freelancerViewer(req), url.searchParams.has("demo"), messages));
+    }
+    if (method === "GET" && url.pathname === "/messages") {
+      return html(res, views.messagesList(store.some(myMilestones(req)), freelancerViewer(req), messages));
+    }
+    if (method === "GET" && url.pathname === "/payments") {
+      return html(res, views.payments(store.some(myMilestones(req)), freelancerViewer(req), messages));
     }
     if (method === "GET" && url.pathname === "/demo") return redirect(res, "/demo/");
     if (method === "GET" && url.pathname.startsWith("/demo/")) return serveDemo(res, url.pathname);
@@ -238,8 +281,21 @@ const server = createServer(async (req, res) => {
       if (method === "GET" && action === "state") {
         return void res.writeHead(200, { "Content-Type": "text/plain", "Cache-Control": "no-store" }).end(views.stateOf(milestone));
       }
+      const role: store.Role = view === "m" ? "freelancer" : "client";
+      if (method === "GET" && action === "chat") {
+        // Opening the chat marks everything so far as read.
+        milestone.seen[role] = milestone.messages.length;
+        store.save();
+        const viewer: views.Viewer = role === "client" ? { role, milestone } : freelancerViewer(req);
+        return html(res, views.chatPage(milestone, role, viewer, messages));
+      }
       if (method === "GET" && !action) {
-        return html(res, view === "m" ? views.freelancerPage(milestone, APP_URL, messages) : views.clientPage(milestone, messages));
+        return html(
+          res,
+          role === "freelancer"
+            ? views.freelancerPage(milestone, APP_URL, freelancerViewer(req), messages)
+            : views.clientPage(milestone, APP_URL, messages),
+        );
       }
       const handler = action ? (view === "m" ? FREELANCER_ACTIONS : CLIENT_ACTIONS).get(action) : undefined;
       if (method === "POST" && handler) return redirect(res, await handler(milestone, await readForm(req)));
@@ -252,7 +308,7 @@ const server = createServer(async (req, res) => {
 });
 
 server.listen(PORT, () => {
-  console.log(`Proof-of-Done running at ${APP_URL}`);
+  console.log(`PayWebbie running at ${APP_URL}`);
   if (!paypal.hasCredentials()) console.log("Missing PayPal credentials: add them to .env.");
   // Check the PayPal login once at startup so a bad key shows up in the server log, not mid-demo.
   else

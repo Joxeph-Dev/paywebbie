@@ -1,5 +1,5 @@
 {
-  "name": "proof-of-done",
+  "name": "paywebbie",
   "version": "0.1.0",
   "private": true,
   "description": "Milestone payments for freelancers where 'done' is backed by evidence. Built on PayPal authorize/capture.",

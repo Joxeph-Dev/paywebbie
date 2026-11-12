@@ -7,13 +7,20 @@ import type { SiteEvidence } from "./evidence.ts";
 
 export type Status = "AWAITING_HOLD" | "FUNDS_HELD" | "IN_REVIEW" | "PAID" | "HOLD_RELEASED" | "DECLINED";
 
+export type Role = "freelancer" | "client";
+export type ChatMessage = { from: Role; text: string; at: string };
+
 export type Milestone = {
   /** The freelancer's private key: /m/<id>. Never shown to the client. */
   id: string;
   /** The client's private key: /c/<clientId>. A separate random value, so the client's link can't be edited into the freelancer's. */
   clientId: string;
   title: string;
+  /** What the freelancer will deliver, in their own words. */
+  requirements?: string;
   brief: string;
+  freelancerName?: string;
+  clientName?: string;
   amount: string;
   criteria: Criterion[];
   status: Status;
@@ -22,6 +29,10 @@ export type Milestone = {
   authorization?: Authorization;
   submission?: { url: string; submittedAt: string; evidence: SiteEvidence; verdict: Verdict };
   changeRequests: { note: string; at: string }[];
+  /** The project chat between the two sides. */
+  messages: ChatMessage[];
+  /** How many chat messages each side has seen, for the unread badges. */
+  seen: { freelancer: number; client: number };
   capture?: Capture;
 };
 
@@ -33,7 +44,11 @@ function load(): Milestone[] {
   try {
     const saved = JSON.parse(readFileSync(FILE, "utf8")) as Milestone[];
     // Milestones saved before client links existed get one now.
-    for (const m of saved) m.clientId ??= newId();
+    for (const m of saved) {
+      m.clientId ??= newId();
+      m.messages ??= [];
+      m.seen ??= { freelancer: 0, client: 0 };
+    }
     return saved;
   } catch (err) {
     if ((err as NodeJS.ErrnoException).code !== "ENOENT") console.warn(`Couldn't read ${FILE}, starting empty:`, err);
