@@ -155,6 +155,8 @@ export function newProject(viewer: Viewer, example: number, messages: Messages):
     "Be specific with all website features.",
     "Include the client's business goals and design style.",
     "Add any references, content, or branding if available.",
+    "Name the pages the client expects, like Menu or Contact.",
+    "Say what visitors should be able to do, like book a table.",
   ];
   return layout({
     title: "New Project",
@@ -169,24 +171,31 @@ export function newProject(viewer: Viewer, example: number, messages: Messages):
         (e, i) => `<a class="button button-small button-green" href="/new?demo=${i + 1}"${i === example ? ' aria-current="true"' : ""}>${e.label}</a>`,
       ).join("")}</div>
     </div>
-    <div class="two-col">
-      <form class="stack" method="post" action="/milestones" data-busy="AI is drafting the checklist…">
-        ${chosen ? `<input type="hidden" name="example" value="${example + 1}">` : ""}
-        <section class="card">
+    <form class="new-grid" method="post" action="/milestones" data-busy="AI is drafting the checklist…">
+      ${chosen ? `<input type="hidden" name="example" value="${example + 1}">` : ""}
+      <div class="stack">
+        <section class="card nc-req">
           <div class="card-title">${icon("list", 22, "tile")}<div><h2><label for="requirements">Project Requirements <span class="req" aria-hidden="true">*</span></label></h2>
             <p class="muted">List the key features and deliverables for the website.</p></div></div>
-          <textarea id="requirements" name="requirements" rows="5" minlength="3" maxlength="1000" required data-count="requirements-count"
+          <textarea id="requirements" name="requirements" rows="6" minlength="3" maxlength="1000" required data-count="requirements-count"
             placeholder="e.g. Responsive design, homepage, contact form, admin dashboard, etc.">${area("requirements")}</textarea>
           <p class="counter" id="requirements-count">0 / 1,000</p>
         </section>
-        <section class="card">
+        <section class="card nc-brief">
           <div class="card-title">${icon("file", 22, "tile")}<div><h2><label for="brief">Client's Brief <span class="req" aria-hidden="true">*</span></label></h2>
             <p class="muted">Describe the client's goals, target audience, and any additional context.</p></div></div>
-          <textarea id="brief" name="brief" rows="4" minlength="10" maxlength="1000" required data-count="brief-count"
+          <textarea id="brief" name="brief" rows="5" minlength="10" maxlength="1000" required data-count="brief-count"
             placeholder="e.g. Build a modern business website for a fitness brand, with service pages, booking, and a clean, professional look.">${area("brief")}</textarea>
           <p class="counter" id="brief-count">0 / 1,000</p>
         </section>
-        <section class="card">
+        <section class="card nc-tips">
+          <div class="card-title">${icon("bulb", 22, "plain")}<h2 class="h3">Tips for a Clear Project</h2></div>
+          <ul class="ticks">${tips.map((tip) => `<li>${icon("check", 18)}${tip}</li>`).join("")}</ul>
+        </section>
+      </div>
+      <div class="stack">
+        ${howItWorks(0, "Project Creation", " nc-flow")}
+        <section class="card nc-details">
           <div class="card-title">${icon("tag", 22, "tile")}<div><h2>Project Details</h2><p class="muted">The client sees these on their page before PayPal holds the money.</p></div></div>
           <div class="field-grid">
             <div><label for="title">Project name <span class="req" aria-hidden="true">*</span></label>
@@ -200,19 +209,12 @@ export function newProject(viewer: Viewer, example: number, messages: Messages):
           </div>
           <p class="help">PayPal's sandbox doesn't support rand, so the hold is made in dollars at a fixed demo rate (R${ZAR_PER_USD} = $1).</p>
         </section>
-        <div class="form-actions">
-          <a class="button" href="/">Cancel</a>
-          <button class="button button-primary">${icon("upload", 18)} Upload Project</button>
-        </div>
-      </form>
-      <div class="stack">
-        ${howItWorks(0, "Project Creation")}
-        <section class="card">
-          <div class="card-title">${icon("bulb", 22, "plain")}<h2 class="h3">Tips for a Clear Project</h2></div>
-          <ul class="ticks">${tips.map((tip) => `<li>${icon("check", 18)}${tip}</li>`).join("")}</ul>
-        </section>
       </div>
-    </div>`,
+      <div class="form-actions">
+        <a class="button" href="/">Cancel</a>
+        <button class="button button-primary">${icon("upload", 18)} Upload Project</button>
+      </div>
+    </form>`,
   });
 }
 
@@ -647,11 +649,11 @@ function evidenceTable(m: Milestone): string {
     ${evidence.errors.length ? `<p class="help">Couldn't load: ${escapeHtml(evidence.errors.join("; "))}</p>` : ""}`;
 }
 
-function howItWorks(current: number, title = "How PayWebbie works"): string {
+function howItWorks(current: number, title = "How PayWebbie works", extraClass = ""): string {
   const items = STEPS.map(
     (step, i) => `<li class="${i === current ? "is-current" : ""}"><span class="flow-num">${i + 1}</span><div><strong>${step.title}</strong><span>${step.text}</span></div></li>`,
   ).join("");
-  return `<section class="card"><h2>${title}</h2><ol class="flow">${items}</ol></section>`;
+  return `<section class="card${extraClass}"><h2>${title}</h2><ol class="flow">${items}</ol></section>`;
 }
 
 // ---- Small helpers ----
@@ -1001,6 +1003,12 @@ main { flex: 1; width: 100%; max-width: 1520px; padding: 22px 32px 40px; }
 .stack { display: grid; grid-template-columns: minmax(0, 1fr); gap: 18px; align-content: start; min-width: 0; }
 .stack-tight { display: grid; gap: 10px; margin-top: 12px; }
 .two-col.even { align-items: stretch; }
+.new-grid { display: grid; grid-template-columns: minmax(0, 1fr) 400px; gap: 18px 22px; align-items: stretch; }
+.new-grid > .stack { display: flex; flex-direction: column; }
+.new-grid > .stack > .card:last-child { flex: 1; display: flex; flex-direction: column; }
+.new-grid > .stack > .card:last-child > .help { margin-top: auto; padding-top: 10px; }
+.new-grid > .form-actions { grid-column: 1 / -1; }
+.new-grid .field-grid > :nth-child(-n+2) { grid-column: 1 / -1; }
 .two-col { display: grid; grid-template-columns: minmax(0, 1fr) 380px; gap: 22px; align-items: start; }
 .empty, .preview-empty { display: grid; justify-items: center; gap: 12px; text-align: center; padding: 28px 12px; color: var(--muted); }
 .preview-empty { border: 1.5px dashed var(--line); border-radius: var(--radius-sm); background: var(--inset); }
@@ -1022,9 +1030,9 @@ main { flex: 1; width: 100%; max-width: 1520px; padding: 22px 32px 40px; }
 .button:hover { border-color: var(--ink); }
 .button-primary { background: var(--blue); border-color: var(--blue); color: #fff; box-shadow: 0 4px 14px rgba(10, 92, 255, .28); }
 .button-primary:hover { background: var(--blue-dark); border-color: var(--blue-dark); }
-.button-green { background: #148a3f; border-color: #148a3f; color: #fff; }
-.button-green:hover { background: #0f7434; border-color: #0f7434; }
-.button-green[aria-current] { background: #0b5c2a; border-color: #0b5c2a; box-shadow: 0 0 0 3px rgba(20, 138, 63, .3); }
+.button-green { background: #22c55e; border-color: #22c55e; color: #052e16; font-weight: 700; }
+.button-green:hover { background: #4ade80; border-color: #4ade80; }
+.button-green[aria-current] { box-shadow: 0 0 0 2px #fff, 0 0 0 4px #15803d; }
 .button-small { min-height: 38px; padding: 0 14px; font-size: .86rem; }
 .button-block { width: 100%; }
 .button:disabled { opacity: .7; cursor: progress; }
@@ -1224,6 +1232,10 @@ td a { font-weight: 600; }
   .nav { display: flex; gap: 4px; }
   .nav a { min-height: 44px; padding: 0 12px; gap: 8px; white-space: nowrap; font-size: .9rem; }
   .two-col, .chat-layout { grid-template-columns: minmax(0, 1fr); }
+  .new-grid { display: flex; flex-direction: column; }
+  .new-grid > .stack { display: contents; }
+  .new-grid > .stack > .card:last-child { flex: none; }
+  .nc-req { order: 1; } .nc-brief { order: 2; } .nc-details { order: 3; } .new-grid > .form-actions { order: 4; } .nc-flow { order: 5; } .nc-tips { order: 6; }
 }
 @media (max-width: 680px) {
   main { padding: 16px 16px 32px; }
