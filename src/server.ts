@@ -79,7 +79,7 @@ async function holdPayment(milestone: store.Milestone): Promise<string> {
   const order = await paypal.createHeldPaymentOrder({
     referenceId: milestone.id,
     description: milestone.title,
-    amount: milestone.amount,
+    amount: paypal.toUsd(milestone.amount),
     currency: "USD",
     returnUrl: `${APP_URL}/paypal/return`,
     cancelUrl: `${APP_URL}/paypal/cancel`,
@@ -99,7 +99,7 @@ async function clientApproved(orderId: string | null): Promise<string> {
   }
   return milestone.status === "DECLINED"
     ? withMessage(`/c/${milestone.clientId}`, "error", "PayPal declined the hold.")
-    : withMessage(`/c/${milestone.clientId}`, "notice", `$${milestone.amount} is now held by PayPal. You haven't been charged.`);
+    : withMessage(`/c/${milestone.clientId}`, "notice", `R${milestone.amount} is now held by PayPal. You haven't been charged.`);
 }
 
 function clientCancelled(orderId: string | null): string {
@@ -168,7 +168,7 @@ function optionalName(form: URLSearchParams, name: string): string | undefined {
 function parseAmount(raw: string | null): string {
   const amount = (raw ?? "").trim();
   if (!/^\d{1,5}(\.\d{1,2})?$/.test(amount) || Number(amount) <= 0) {
-    throw new Error("The amount must be a positive USD value such as 150 or 149.99.");
+    throw new Error("The amount must be a positive rand value such as 800 or 799.99.");
   }
   return Number(amount).toFixed(2);
 }

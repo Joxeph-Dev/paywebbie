@@ -3,6 +3,13 @@ import { createHash, randomUUID } from "node:crypto";
 
 const API_URL = "https://api-m.sandbox.paypal.com";
 // PayPal holds authorized funds for 29 days but only guarantees them for the first 3 (the "honor period").
+/** PayPal's sandbox rejects rand, so holds are made in dollars at a fixed demo rate. */
+export const ZAR_PER_USD = Number(process.env.ZAR_PER_USD || 18);
+
+export function toUsd(zar: string): string {
+  return Math.max(0.01, Number(zar) / ZAR_PER_USD).toFixed(2);
+}
+
 export const HONOR_PERIOD_MS = 3 * 24 * 60 * 60 * 1000;
 
 export type Money = { currency_code: string; value: string };

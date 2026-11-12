@@ -1,7 +1,7 @@
 // Server-rendered HTML for PayWebbie. Every dynamic value goes through escapeHtml.
 // Design: Joseph's own Figma screens (PayWebbie review dashboard + collaboration dashboard + new project):
 // dark navy sidebar, white cards, one strong blue, green/red/amber for verdicts, Inter.
-import { HONOR_PERIOD_MS } from "./paypal.ts";
+import { HONOR_PERIOD_MS, ZAR_PER_USD, toUsd } from "./paypal.ts";
 import type { Milestone, Role, Status } from "./store.ts";
 
 export type Messages = { notice?: string | null; error?: string | null };
@@ -64,7 +64,7 @@ export const DEMO = {
   brief:
     "Mama Thandi's Kitchen is a family restaurant in East London. The website should feel warm and welcoming, " +
     "help new customers find us, and let people book a table without phoning.",
-  amount: "150",
+  amount: "800",
   freelancerName: "JoxephCode",
   clientName: "Mama Thandi",
 };
@@ -90,15 +90,15 @@ export function home(milestones: Milestone[], viewer: Viewer, messages: Messages
         <a class="row-main" href="/m/${m.id}"><strong>${escapeHtml(m.title)}</strong>
           <span class="muted">${projectNumber(m)} · Client: ${escapeHtml(clientName(m))}</span></a>
         ${pill(STATUS[m.status].label, STATUS[m.status].tone, STATUS[m.status].icon)}
-        <span class="money">$${m.amount}</span>
+        <span class="money">R${m.amount}</span>
         <a class="button button-small${m.status === "FUNDS_HELD" ? " button-primary" : ""}" href="/m/${m.id}#next">${NEXT_ACTION[m.status]}</a>
       </li>`,
     )
     .join("");
   const stats = [
     ["folder", "Active projects", String(active.length)],
-    ["lock", "Held by PayPal", `$${sum(held)}`],
-    ["wallet", "Paid out", `$${sum(paid)}`],
+    ["lock", "Held by PayPal", `R${sum(held)}`],
+    ["wallet", "Paid out", `R${sum(paid)}`],
   ] as const;
   return layout({
     title: "Dashboard",
@@ -168,14 +168,14 @@ export function newProject(viewer: Viewer, demo: boolean, messages: Messages): s
           <div class="field-grid">
             <div><label for="title">Project name <span class="req" aria-hidden="true">*</span></label>
               <input id="title" name="title" maxlength="127" required${value("title")} placeholder="Mama Thandi Website"></div>
-            <div><label for="amount">Amount (USD) <span class="req" aria-hidden="true">*</span></label>
-              <div class="input-money"><span aria-hidden="true">$</span><input id="amount" name="amount" inputmode="decimal" required${value("amount")} placeholder="150"></div></div>
+            <div><label for="amount">Amount (ZAR) <span class="req" aria-hidden="true">*</span></label>
+              <div class="input-money"><span aria-hidden="true">R</span><input id="amount" name="amount" inputmode="decimal" required${value("amount")} placeholder="800"></div></div>
             <div><label for="freelancerName">Your name</label>
               <input id="freelancerName" name="freelancerName" maxlength="40"${value("freelancerName")} placeholder="JoxephCode"></div>
             <div><label for="clientName">Client's name</label>
               <input id="clientName" name="clientName" maxlength="40"${value("clientName")} placeholder="Mama Thandi"></div>
           </div>
-          <p class="help">PayPal's sandbox holds the payment in US dollars.</p>
+          <p class="help">PayPal's sandbox doesn't support rand, so the hold is made in dollars at a fixed demo rate (R${ZAR_PER_USD} = $1).</p>
         </section>
         <div class="form-actions">
           <a class="button" href="/">Cancel</a>
@@ -222,7 +222,7 @@ export function payments(milestones: Milestone[], viewer: Viewer, messages: Mess
   const rows = milestones
     .map(
       (m) => `<tr><td><a href="/m/${m.id}">${escapeHtml(m.title)}</a><span class="muted block">${projectNumber(m)}</span></td>
-        <td>${escapeHtml(clientName(m))}</td><td class="money">$${m.amount}</td>
+        <td>${escapeHtml(clientName(m))}</td><td class="money">R${m.amount}</td>
         <td>${pill(PAYMENT[m.status].label, PAYMENT[m.status].tone)}</td>
         <td>${m.capture ? `<code>${escapeHtml(m.capture.id)}</code>` : m.authorization ? `<code>${escapeHtml(m.authorization.id)}</code>` : "—"}</td></tr>`,
     )
@@ -273,11 +273,7 @@ function projectPage(m: Milestone, role: Role, appUrl: string, viewer: Viewer, m
     ${stepper(m)}
     <div class="project-layout">
       ${action ? `<div class="action-slot">${action}</div>` : ""}
-      <div class="dash-grid">
-        <div class="stack">${deliveryCard(m, role)}</div>
-        <div class="stack">${verificationCard(m, role)}${paymentCard(m)}</div>
-        <div class="stack">${requirementsCard(m, role)}${detailsCard(m, role)}</div>
-      </div>
+      <div class="dash-grid">${deliveryCard(m, role)}${verificationCard(m, role)}${requirementsCard(m, role)}<div class="stack">${paymentCard(m)}${detailsCard(m, role)}</div></div>
     </div>`,
   });
 }
@@ -340,7 +336,7 @@ export function chatPage(m: Milestone, role: Role, viewer: Viewer, messages: Mes
           <dl class="details">
             <div><dt>${icon("file", 16)} Project</dt><dd>${escapeHtml(m.title)}</dd></div>
             <div><dt>${icon("clock", 16)} Status</dt><dd>${pill(STATUS[m.status].label, STATUS[m.status].tone)}</dd></div>
-            <div><dt>${icon("layers", 16)} Project Value</dt><dd><strong>$${m.amount}</strong></dd></div>
+            <div><dt>${icon("layers", 16)} Project Value</dt><dd><strong>R${m.amount}</strong></dd></div>
           </dl>
         </section>
         <section class="card">
@@ -467,11 +463,11 @@ function paymentCard(m: Milestone): string {
     <div class="card-head"><div class="card-title">${icon("wallet", 22, "plain")}<div><h2 class="h3">Payment Status</h2><p class="muted">${note[m.status]}</p></div></div>
       ${pill(PAYMENT[m.status].label, PAYMENT[m.status].tone)}</div>
     <dl class="amounts">
-      <div><dt>Agreed Amount</dt><dd>$${m.amount}</dd></div>
-      <div><dt>${m.status === "PAID" ? "Paid" : "Held Amount"}</dt><dd>$${held ? m.amount : "0.00"}</dd></div>
+      <div><dt>Agreed Amount</dt><dd>R${m.amount}</dd></div>
+      <div><dt>${m.status === "PAID" ? "Paid" : "Held Amount"}</dt><dd>R${held ? m.amount : "0.00"}</dd></div>
       <div><dt>Release To</dt><dd class="handle">@${escapeHtml(freelancerName(m))}</dd></div>
     </dl>
-    ${m.status === "FUNDS_HELD" || m.status === "IN_REVIEW" ? `<p class="help">${heldUntil(m)}</p>` : ""}
+    ${m.status === "FUNDS_HELD" || m.status === "IN_REVIEW" || m.status === "PAID" ? `<p class="help">PayPal's sandbox uses dollars, so it holds $${toUsd(m.amount)} (demo rate R${ZAR_PER_USD} = $1).</p>` : ""}${m.status === "FUNDS_HELD" || m.status === "IN_REVIEW" ? `<p class="help">${heldUntil(m)}</p>` : ""}
   </section>`;
 }
 
@@ -562,8 +558,8 @@ function actionCard(m: Milestone, role: Role, appUrl: string): string {
   if (m.status === "AWAITING_HOLD") {
     return `<form class="card action-card" id="next" method="post" action="/c/${m.clientId}/hold" data-busy="Opening PayPal…">
       <div class="action-head"><span class="action-icon">${icon("lock", 22)}</span><div><p class="kicker">Your next step</p><h2>Confirm the project and hold the payment</h2>
-        <p>PayPal holds <strong>$${m.amount}</strong> on your account. <strong>You're not charged yet.</strong> You pay only when you approve the finished website.</p></div></div>
-      <div class="action-buttons"><button class="button button-primary">${icon("lock", 18)} Hold $${m.amount} with PayPal</button></div>
+        <p>PayPal holds <strong>R${m.amount}</strong> (about $${toUsd(m.amount)}: PayPal's sandbox uses dollars) on your account. <strong>You're not charged yet.</strong> You pay only when you approve the finished website.</p></div></div>
+      <div class="action-buttons single"><button class="button button-primary">${icon("lock", 18)} Hold R${m.amount} with PayPal</button></div>
       <p class="help">By holding the payment, you agree to the requirements below.</p>
     </form>`;
   }
@@ -704,7 +700,6 @@ function layout(opts: {
   let user = { name: "Freelancer", role: "Freelancer" };
   let bell = "/messages";
   let unread = 0;
-  let tagline = "Build. Deliver.<br>Get Paid.";
   if (viewer?.role === "freelancer") {
     unread = viewer.unread;
     user = { name: viewer.name || "Freelancer", role: "Freelancer" };
@@ -719,12 +714,11 @@ function layout(opts: {
     unread = unreadFor(m, "client");
     user = { name: clientName(m), role: "Client" };
     bell = `${base}/chat`;
-    tagline = "Review. Approve.<br>Pay with proof.";
     links =
       link("dashboard", base, "home", "Dashboard") + link("messages", `${base}/chat`, "message", "Messages", unread) + link("payments", `${base}#payment`, "wallet", "Payments");
   }
   // The client's pages have no way into the freelancer side, so for them the logo is just a logo.
-  const brandInner = `<span class="logo-mark">${icon("logo", 26)}</span><span>Pay<span class="accent">Webbie</span></span>`;
+  const brandInner = `<span>Pay<span class="accent">Webbie</span></span>`;
   const brand = viewer?.role === "client" ? `<span class="brand">${brandInner}</span>` : `<a class="brand" href="/">${brandInner}</a>`;
   const payment = paymentStatus
     ? `<div class="pay-status"><span>Payment Status</span>${pill(PAYMENT[paymentStatus.status].label, PAYMENT[paymentStatus.status].tone)}</div>`
@@ -747,7 +741,6 @@ function layout(opts: {
 <aside class="sidebar">
   ${brand}
   ${links ? `<nav aria-label="Main"><ul class="nav">${links}</ul></nav>` : ""}
-  <div class="promo"><span class="promo-icon">${icon("code", 22)}</span><p>${tagline}</p></div>
 </aside>
 <div class="content">
 <header class="topbar">
@@ -869,7 +862,6 @@ const ICONS = {
   target: '<circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5"/><circle cx="12" cy="12" r="1.2"/>',
   layers: '<path d="m12 3 9 5-9 5-9-5 9-5Z"/><path d="m3 12.5 9 5 9-5M3 16.5l9 5 9-5"/>',
   dot: '<circle cx="12" cy="12" r="8" fill="currentColor" stroke="none"/>',
-  logo: '<path d="M5 21V4.5a1.5 1.5 0 0 1 1.5-1.5H13a6 6 0 0 1 0 12H9" stroke-width="3.2"/><path d="m11.5 9.5 2 2 4-4.5" stroke-width="2.4"/>',
 } as const;
 
 type IconName = keyof typeof ICONS;
@@ -882,7 +874,7 @@ function icon(name: IconName, size = 20, wrap?: "tile" | "plain"): string {
 }
 
 const FAVICON =
-  '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><rect width="24" height="24" rx="6" fill="#0A5CFF"/><path d="M7 20V6h5.5a4.5 4.5 0 0 1 0 9H10" fill="none" stroke="#fff" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+  '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><rect width="24" height="24" rx="6" fill="#0A5CFF"/><path d="m6.5 12.5 3.5 3.5 7.5-8" fill="none" stroke="#fff" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg>';
 
 const dateFormat = new Intl.DateTimeFormat("en-ZA", { dateStyle: "medium", timeStyle: "short", timeZone: "Africa/Johannesburg" });
 const timeFormat = new Intl.DateTimeFormat("en-ZA", { timeStyle: "short", timeZone: "Africa/Johannesburg" });
@@ -904,7 +896,7 @@ export function escapeHtml(value: string): string {
 const CSS = `
 :root {
   --blue: #0a5cff; --blue-dark: #0848cc; --blue-soft: #e8efff; --blue-line: #c7d7ff;
-  --navy: #060d1f; --navy-2: #0b1730;
+  --navy: #0b1533; --navy-2: #0b1533;
   --ink: #0f172a; --text: #1e293b; --muted: #5b6475; --line: #e5e8ef; --bg: #f6f8fc; --card: #ffffff; --inset: #f3f5f9;
   --ok: #15803d; --ok-bg: #dcfce7; --ok-line: #a7e8bf;
   --bad: #c81e1e; --bad-bg: #fde8e8; --bad-line: #f6b9b9;
@@ -935,20 +927,15 @@ code { font: 500 .85em/1.4 ui-monospace, "Cascadia Code", Consolas, monospace; w
 /* Shell */
 .shell { overflow-x: clip; display: grid; grid-template-columns: 250px minmax(0, 1fr); min-height: 100vh; }
 .sidebar { position: sticky; top: 0; height: 100vh; display: flex; flex-direction: column; gap: 28px; padding: 26px 16px 20px;
-  color: #fff; background: radial-gradient(120% 50% at 0% 100%, rgba(10, 92, 255, .45), transparent 60%), linear-gradient(180deg, var(--navy) 0%, var(--navy-2) 100%); }
+  color: #fff; background: var(--navy); }
 .brand { display: flex; align-items: center; gap: 10px; padding: 0 8px; color: #fff; text-decoration: none; font-size: 1.55rem; font-weight: 800; letter-spacing: -.02em; }
 .brand .accent { color: #3d85ff; }
-.logo-mark { color: #3d85ff; display: inline-flex; }
 .nav { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
 .nav a { display: flex; align-items: center; gap: 14px; min-height: 48px; padding: 0 14px; border-radius: 10px; color: #e6ebf5; text-decoration: none; font-weight: 500; }
 .nav a:hover { background: rgba(255, 255, 255, .08); }
 .nav a.active { background: var(--blue); color: #fff; font-weight: 600; box-shadow: 0 6px 18px rgba(10, 92, 255, .35); }
 .nav-badge { margin-left: auto; min-width: 24px; height: 24px; padding: 0 7px; display: inline-grid; place-items: center; border-radius: 999px; background: var(--blue); color: #fff; font-size: .78rem; font-weight: 700; }
 .nav a.active .nav-badge { background: #fff; color: var(--blue); }
-.promo { margin-top: auto; position: relative; overflow: hidden; padding: 20px; border-radius: 16px; border: 1px solid rgba(255, 255, 255, .12);
-  background: radial-gradient(140% 70% at 100% 120%, #0a5cff 0%, rgba(10, 92, 255, .25) 45%, transparent 70%), #0b1530; }
-.promo p { margin-top: 18px; font-size: 1.3rem; font-weight: 800; line-height: 1.3; }
-.promo-icon { display: inline-grid; place-items: center; width: 44px; height: 44px; border-radius: 10px; background: var(--blue); }
 .content { display: flex; flex-direction: column; min-width: 0; overflow-x: clip; }
 .topbar { display: flex; align-items: center; justify-content: space-between; gap: 16px; min-height: 72px; padding: 12px 32px; background: #fff; border-bottom: 1px solid var(--line); }
 .sandbox-note { display: inline-flex; align-items: center; gap: 8px; color: var(--muted); font-size: .86rem; }
@@ -1080,15 +1067,23 @@ input:focus, textarea:focus { outline: none; border-color: var(--blue); box-shad
 .step-num { flex: none; display: inline-grid; place-items: center; width: 22px; height: 22px; border-radius: 50%; border: 1.5px solid currentColor; font-size: .78rem; }
 .project-layout { display: flex; flex-direction: column; gap: 20px; }
 .action-slot { display: flex; justify-content: center; }
-.dash-grid { display: grid; grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr) minmax(0, 1fr); gap: 18px; align-items: start; }
+.dash-grid { display: grid; grid-template-columns: repeat(12, minmax(0, 1fr)); gap: 18px; align-items: stretch; }
+.dash-grid > .card { display: flex; flex-direction: column; }
+.dash-grid > :nth-child(1) { grid-column: span 7; }
+.dash-grid > :nth-child(2) { grid-column: span 5; }
+.dash-grid > :nth-child(n+3) { grid-column: span 6; }
+.dash-grid > .stack { grid-template-rows: auto 1fr; }
+.dash-grid > .stack > .card { display: flex; flex-direction: column; }
+.dash-grid .card > .button-block:last-child { margin-top: auto; }
+.dash-grid .preview-empty { flex: 1; align-content: center; }
 .banner { display: flex; gap: 14px; align-items: center; padding: 16px 20px; border-radius: var(--radius); margin-bottom: 18px; border: 1px solid; }
 .banner.tone-ok { border-color: var(--ok-line); }
 .banner.tone-bad { border-color: var(--bad-line); }
 .banner h2 { color: inherit; }
 .banner p { color: var(--text); }
 
-.preview { position: relative; aspect-ratio: 16 / 10; overflow: hidden; border-radius: 10px; border: 1px solid var(--line); background: var(--inset); }
-.preview iframe { position: absolute; top: 0; left: 0; width: 250%; height: 250%; border: 0; transform: scale(.4); transform-origin: 0 0; pointer-events: none; background: #fff; }
+.preview { position: relative; flex: 1; min-height: 280px; overflow: hidden; border-radius: 10px; border: 1px solid var(--line); background: var(--inset); }
+.preview iframe { position: absolute; top: 0; left: 0; width: 200%; height: 200%; border: 0; transform: scale(.5); transform-origin: 0 0; pointer-events: none; background: #fff; }
 .url-row { display: flex; gap: 10px; align-items: center; margin-top: 12px; flex-wrap: wrap; }
 .copy-field { flex: 1 1 200px; min-width: 0; display: flex; align-items: center; gap: 8px; padding: 4px 4px 4px 12px; border-radius: 10px; background: var(--blue-soft); color: var(--blue); }
 .copy-field a, .copy-field code { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: .86rem; }
@@ -1143,6 +1138,8 @@ details.evidence > summary { cursor: pointer; font-weight: 600; color: var(--blu
 .action-buttons:has(> :only-child) { grid-template-columns: 1fr; }
 .action-buttons .button { width: 100%; min-height: 50px; }
 .action-buttons form { margin: 0; }
+.action-buttons.single { display: flex; }
+.action-buttons.single .button { width: auto; min-width: 280px; min-height: 46px; }
 .inline-form { display: flex; gap: 12px; align-items: flex-end; flex-wrap: wrap; }
 .inline-form .grow { flex: 1 1 260px; }
 .inline-form .button { min-height: 46px; }
@@ -1186,8 +1183,8 @@ td a { font-weight: 600; }
 /* Responsive */
 @media (max-width: 1180px) {
   .dash-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-  .dash-grid > .stack:first-child { grid-column: 1 / -1; }
-  .preview { aspect-ratio: 16 / 7; }
+  .dash-grid > :nth-child(n) { grid-column: span 1; }
+  .dash-grid > :nth-child(1), .dash-grid > :nth-child(2) { grid-column: 1 / -1; }
 }
 @media (max-width: 960px) {
   .shell { grid-template-columns: minmax(0, 1fr); }
@@ -1197,7 +1194,6 @@ td a { font-weight: 600; }
   .sidebar nav::-webkit-scrollbar { display: none; }
   .nav { display: flex; gap: 4px; }
   .nav a { min-height: 44px; padding: 0 12px; gap: 8px; white-space: nowrap; font-size: .9rem; }
-  .promo { display: none; }
   .two-col, .chat-layout { grid-template-columns: minmax(0, 1fr); }
 }
 @media (max-width: 680px) {
@@ -1208,6 +1204,7 @@ td a { font-weight: 600; }
   h1 { font-size: 1.45rem; }
   .head-icon { width: 48px; height: 48px; }
   .stats, .dash-grid, .field-grid { grid-template-columns: minmax(0, 1fr); }
+  .dash-grid > :nth-child(n) { grid-column: auto; }
   .stepper { grid-template-columns: 1fr 1fr; gap: 4px; }
   .stepper li, .stepper li:first-child, .stepper li:last-child { clip-path: none; border-radius: 8px; font-size: .82rem; padding: 6px 8px; }
   .action-buttons { grid-template-columns: 1fr; }
