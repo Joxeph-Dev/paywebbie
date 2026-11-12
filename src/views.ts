@@ -69,6 +69,24 @@ export const DEMO = {
   clientName: "Mama Thandi",
 };
 
+const DEMO_2 = {
+  title: "Kasi Flavours takeaway website",
+  requirements:
+    "Homepage with opening hours\nMenu page with every dish and its price\nOrder page with a form for takeaway orders and a phone number\nCatering page with package prices\nWorks well on phones",
+  brief:
+    "Kasi Flavours is a takeaway kitchen in Mdantsane that sells braai plates, kota sandwiches and fresh amagwinya. " +
+    "The owner wants a bold, friendly website where people can see the menu and prices and send a takeaway order without phoning.",
+  amount: "1200",
+  freelancerName: "JoxephCode",
+  clientName: "Sipho Kasi",
+};
+
+/** The two examples on the New Project page. */
+const EXAMPLES = [
+  { label: "Mama Thandi's Kitchen", data: DEMO },
+  { label: "Kasi Flavours", data: DEMO_2 },
+];
+
 /** Who is looking at the page, so the shell can draw the right sidebar. */
 export type Viewer =
   | { role: "freelancer"; unread: number; name?: string }
@@ -128,9 +146,11 @@ export function home(milestones: Milestone[], viewer: Viewer, messages: Messages
   });
 }
 
-export function newProject(viewer: Viewer, demo: boolean, messages: Messages): string {
-  const value = (field: keyof typeof DEMO) => (demo ? ` value="${escapeHtml(DEMO[field])}"` : "");
-  const area = (field: "requirements" | "brief") => (demo ? escapeHtml(DEMO[field]) : "");
+/** `example` is the index of the example to fill in, or -1 for an empty form. */
+export function newProject(viewer: Viewer, example: number, messages: Messages): string {
+  const chosen = EXAMPLES[example]?.data;
+  const value = (field: keyof typeof DEMO) => (chosen ? ` value="${escapeHtml(chosen[field])}"` : "");
+  const area = (field: "requirements" | "brief") => (chosen ? escapeHtml(chosen[field]) : "");
   const tips = [
     "Be specific with all website features.",
     "Include the client's business goals and design style.",
@@ -145,7 +165,9 @@ export function newProject(viewer: Viewer, demo: boolean, messages: Messages): s
     <div class="page-head">
       <div class="head-with-icon"><span class="head-icon">${icon("monitor", 30)}</span>
         <div><h1>Start a New Project</h1><p class="sub">Add the project requirements and client brief to create a secure, verifiable project.</p></div></div>
-      ${demo ? pill("Example filled in", "review", "lightning") : `<a class="button" href="/new?demo">${icon("lightning", 18)} Try an example</a>`}
+      <div class="examples" role="group" aria-label="Try an example"><span class="muted">Try an example:</span>${EXAMPLES.map(
+        (e, i) => `<a class="button button-small${i === example ? " button-primary" : ""}" href="/new?demo=${i + 1}"${i === example ? ' aria-current="true"' : ""}>${icon("lightning", 14)} ${e.label}</a>`,
+      ).join("")}</div>
     </div>
     <div class="two-col">
       <form class="stack" method="post" action="/milestones" data-busy="AI is drafting the checklist…">
@@ -536,7 +558,7 @@ function actionCard(m: Milestone, role: Role, appUrl: string): string {
             <input id="url" name="url" type="url" required placeholder="https://clients-website.com"></div>
           <button class="button button-primary">${icon("shieldCheck", 18)} Submit & run AI checks</button>
         </div>
-        <p class="help">No site ready yet? <button type="button" class="link-button" data-fill="url" data-value="${escapeHtml(appUrl)}/demo/">Use the sample restaurant site</button></p>
+        <p class="help">No site ready yet? Use a sample restaurant site: <button type="button" class="link-button" data-fill="url" data-value="${escapeHtml(appUrl)}/demo/">Mama Thandi's</button> · <button type="button" class="link-button" data-fill="url" data-value="${escapeHtml(appUrl)}/demo/kasi.html">Kasi Flavours</button></p>
       </form>`;
     }
     if (m.status === "IN_REVIEW") {
@@ -961,6 +983,7 @@ main { flex: 1; width: 100%; max-width: 1520px; padding: 22px 32px 40px; }
 .crumb-home { display: inline-flex; color: var(--ink); }
 .page-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; flex-wrap: wrap; margin-bottom: 18px; }
 .sub { color: var(--muted); margin-top: 4px; font-size: 1rem; }
+.examples { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
 .head-with-icon { display: flex; gap: 18px; align-items: center; }
 .head-icon { flex: none; display: grid; place-items: center; width: 64px; height: 64px; border-radius: 14px; background: var(--blue); color: #fff; }
 .head-icon.dark { width: 54px; height: 54px; background: var(--navy-2); }

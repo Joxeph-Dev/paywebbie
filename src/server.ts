@@ -254,7 +254,7 @@ const server = createServer(async (req, res) => {
       return html(res, views.home(store.some(myMilestones(req)), freelancerViewer(req), messages));
     }
     if (method === "GET" && url.pathname === "/new") {
-      return html(res, views.newProject(freelancerViewer(req), url.searchParams.has("demo"), messages));
+      return html(res, views.newProject(freelancerViewer(req), Number(url.searchParams.get("demo") ?? 0) - 1, messages));
     }
     if (method === "GET" && url.pathname === "/messages") {
       return html(res, views.messagesList(store.some(myMilestones(req)), freelancerViewer(req), messages));
